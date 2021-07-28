@@ -1,14 +1,15 @@
 # 2ch-bot
-Discordで2ちゃんねる風の会話が楽しめるBotです。
+
+Discord で 2 ちゃんねる風の会話が楽しめる Bot です。
 
 ## セットアップ
 
 `.env` に以下のものを書き込みます
 
-- `DISCORD_TOKEN`: Discord BotのTOKEN
-- `MONGODB_URI`: MongoDBのURI
+- `DISCORD_TOKEN`: Discord Bot の TOKEN
+- `MONGODB_URI`: MongoDB の URI
 
-index.jsのチャンネルIDとカテゴリIDを好みのものに設定します
+index.js のチャンネル ID とカテゴリ ID を好みのものに設定します
 
 ## インストール, 起動
 

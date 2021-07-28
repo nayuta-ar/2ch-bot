@@ -105,7 +105,11 @@ client.on('messageCreate', async (message) => {
       return message.channel.setParent('868694406876790804')
     }
 
-    if (userData.tag === message.channel.topic)
+    if (message.member.roles.cache.some((role) => role.name === '運営'))
+      userName = `${userName}<:moderator:869939850638393374>`
+
+    const userTag = userData.tag ?? ''
+    if (userTag === message.channel.topic)
       userName = `${userName}<:nushi:869905929146085396>`
 
     await message.delete()
