@@ -59,6 +59,14 @@ client.on('messageCreate', async (message) => {
       })
       .then((a) => {
         message.reply(`<#${a.id}> スレッドを立てました。`)
+        a.send({
+          embeds: [
+            new MessageEmbed()
+              .setAuthor(`0 ${userData.nick}(${userData.tag})`)
+              .setDescription(message.content)
+              .setColor('WHITE'),
+          ],
+        })
       })
   }
 
@@ -103,7 +111,7 @@ client.on('messageCreate', async (message) => {
     message.channel.send({
       embeds: [
         new MessageEmbed()
-          .setAuthor(`${await num()} ${userName} (${userData.tag})`)
+          .setAuthor(`${await num()} ${userName}(${userData.tag})`)
           .setDescription(message.content)
           .setImage(
             message.attachments.first()
