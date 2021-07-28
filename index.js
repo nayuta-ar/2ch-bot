@@ -62,7 +62,7 @@ client.on('messageCreate', async (message) => {
         a.send({
           embeds: [
             new MessageEmbed()
-              .setAuthor(`0 ${userData.nick}(${userData.tag})`)
+              .setTitle(`0 ${userData.nick}(${userData.tag})`)
               .setDescription(message.content)
               .setColor('WHITE'),
           ],
@@ -82,7 +82,7 @@ client.on('messageCreate', async (message) => {
               a
                 .filter((a) => a.author.id === client.user.id)
                 .first()
-                .embeds[0].author.name.split(' ')[0]
+                .embeds[0].title.split(' ')[0]
             ) + 1
         )
         return n
@@ -112,7 +112,7 @@ client.on('messageCreate', async (message) => {
     message.channel.send({
       embeds: [
         new MessageEmbed()
-          .setAuthor(`${await num()} ${userName}(${userData.tag})`)
+          .setTitle(`${await num()} ${userName}(${userData.tag})`)
           .setDescription(message.content)
           .setImage(
             message.attachments.first()
@@ -155,7 +155,7 @@ const commands = {
   async reset(interaction) {
     return await interaction.reply({
       embeds: [
-        new MessageEmbed().setAuthor(
+        new MessageEmbed().setTitle(
           String(interaction.options.get('num').value)
         ),
       ],
