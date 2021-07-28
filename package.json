@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "start": "node index.js",
+    "format": "yarn prettier -w ."
+  },
+  "dependencies": {
+    "discord.js": "discordjs/discord.js",
+    "mongoose": "^5.13.3"
+  },
+  "devDependencies": {
+    "prettier": "2.3.2"
+  }
+}
