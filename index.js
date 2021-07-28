@@ -2,9 +2,6 @@ const { Client, Intents, MessageEmbed } = require('discord.js'),
   client = new Client({
     intents: Intents.FLAGS.GUILDS | Intents.FLAGS.GUILD_MESSAGES,
   }),
-  base64 = require('base-64'),
-  utf8 = require('utf8'),
-  moment = require('moment'),
   mongoose = require('mongoose')
 tagGen = () => {
   const crypto = require('crypto')
@@ -106,11 +103,7 @@ client.on('messageCreate', async (message) => {
     message.channel.send({
       embeds: [
         new MessageEmbed()
-          .setAuthor(
-            `${await num()} ${userName} ${moment(message.createdAt).format(
-              'YYYY/MM/DD HH:mm:ss'
-            )} (${userData.tag})`
-          )
+          .setAuthor(`${await num()} ${userName} (${userData.tag})`)
           .setDescription(message.content)
           .setImage(
             message.attachments.first()
