@@ -5,5 +5,6 @@ module.exports = mongoose.model(
   new mongoose.Schema({
     id: { type: String, required: true },
     nick: { type: String, default: '名無しさん' },
+    tag: { type: String, required: true },
   })
 )

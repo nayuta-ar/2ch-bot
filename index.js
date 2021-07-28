@@ -4,11 +4,18 @@ const { Client, Intents, MessageEmbed } = require('discord.js'),
   }),
   base64 = require('base-64'),
   utf8 = require('utf8'),
-  encode = (txt) => base64.encode(utf8.encode(txt)),
   moment = require('moment'),
   mongoose = require('mongoose')
+tagGen = () => {
+  const crypto = require('crypto')
+  const S = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const N = 5
+  return Array.from(crypto.randomFillSync(new Uint8Array(N)))
+    .map((n) => S[n % S.length])
+    .join('')
+}
 
-mongoose.connect(proess.env.MONGODB_URI, {
+mongoose.connect(process.env.MONGODB_URI, {
   useCreateIndex: true,
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -29,18 +36,19 @@ client.on('messageCreate', async (message) => {
   if (message.author.bot) return
 
   let userName = '名無しさん'
-  const userData = await userSchema
-    .findOne({
+  const userData = await userSchema.findOne(
+    {
       id: message.author.id,
-    })
-    .catch(e, (user) => {
+    },
+    (e, user) => {
       if (!user)
-        await userSchema.create({
+        userSchema.create({
           id: message.author.id,
+          tag: tagGen(),
         })
-      else
-        userName = user.nick
-    })
+      else userName = user.nick
+    }
+  )
 
   if (message.channel.id === '868493156277170196') {
     if (!message.content) return message.reply('メッセージを送信してください。')
@@ -48,8 +56,9 @@ client.on('messageCreate', async (message) => {
     message.guild.channels
       .create(message.content, {
         parent: '868392026813644871',
+        position: 0,
         rateLimitPerUser: 3,
-        topic: encode(message.author.id),
+        topic: userData.tag,
       })
       .then((a) => {
         message.reply(`<#${a.id}> スレッドを立てました。`)
@@ -57,8 +66,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (
-    message.parent.id === '868392026813644871' ||
-    message.parent.id === '868694406876790804'
+    message.channel.parent.id === '868392026813644871' ||
+    message.channel.parent.id === '868694406876790804'
   ) {
     num = async () => {
       try {
@@ -68,7 +77,7 @@ client.on('messageCreate', async (message) => {
               a
                 .filter((a) => a.author.id === client.user.id)
                 .first()
-                .embeds[0].title.split(' ')[0]
+                .embeds[0].author.name.split(' ')[0]
             ) + 1
         )
         return n
@@ -78,32 +87,104 @@ client.on('messageCreate', async (message) => {
     }
 
     if ((await num()) > 1000) {
-      message.channel.send(
-        new MessageEmbed()
-          .setTitle('END')
-          .setDescription(
-            'レス数が1000以上になったので書き込みを中止しました。\n新しいスレッドを立てて会話してください。'
-          )
-          .setColor('RED')
-      )
+      message.channel.send({
+        embeds: [
+          new MessageEmbed()
+            .setTitle('END')
+            .setDescription(
+              'レス数が1000以上になったので書き込みを中止しました。\n新しいスレッドを立てて会話してください。'
+            )
+            .setColor('RED'),
+        ],
+      })
       return message.channel.setParent('868694406876790804')
     }
 
-    if (encode(message.author.id) === message.channel.topic)
-      userName = `${userName} [主]`
+    if (userData.tag === message.channel.topic) userName = `${userName} [主]`
 
     await message.delete()
-    message.channel.send(
-      new MessageEmbed()
-        .setAuthor(
-          `${await num()} ${userName} ${moment(message.createdAt).format(
-            'YYYY/MM/DD HH:mm:ss'
-          )} (${encode(message.author.id)})`
-        )
-        .setDescription(message.content)
-        .setImage(message.attachments.first().proxyURL ?? null)
-    )
+    message.channel.send({
+      embeds: [
+        new MessageEmbed()
+          .setAuthor(
+            `${await num()} ${userName} ${moment(message.createdAt).format(
+              'YYYY/MM/DD HH:mm:ss'
+            )} (${userData.tag})`
+          )
+          .setDescription(message.content)
+          .setImage(
+            message.attachments.first()
+              ? message.attachments.first().proxyURL
+              : null
+          )
+          .setColor('WHITE'),
+      ],
+    })
+    message.channel.setPosition(0)
   }
 })
+
+const commands = {
+  async name(interaction) {
+    const userData = await userSchema.findOne(
+      {
+        id: interaction.member.id,
+      },
+      (e, user) => {
+        if (!user)
+          userSchema.create({
+            id: message.author.id,
+            nick: interaction.options.get('name').value,
+            tag: tagGen(),
+          })
+      }
+    )
+    await userData.updateOne({
+      nick: interaction.options.get('name').value,
+    })
+    interaction.reply({
+      content: `ニックネームを ${
+        interaction.options.get('name').value
+      } に変更しました。`,
+      ephemeral: true,
+    })
+    return
+  },
+  async reset(interaction) {
+    return await interaction.reply({
+      embeds: [
+        new MessageEmbed().setAuthor(
+          String(interaction.options.get('num').value)
+        ),
+      ],
+    })
+  },
+  async tag_search(interaction) {
+    await userSchema.findOne(
+      {
+        tag: interaction.options.get('tag').value,
+      },
+      (e, user) => {
+        if (!user)
+          return interaction.reply({
+            content: 'ユーザーが存在しません。',
+            ephemeral: true,
+          })
+        else
+          return interaction.reply({
+            content: `<@!${user.id}> (${user.id})\nNick: ${user.nick}\nTag: ${user.tag}`,
+            ephemeral: true,
+          })
+      }
+    )
+  },
+}
+
+async function onInteraction(interaction) {
+  if (!interaction.isCommand()) return
+  return commands[interaction.commandName](interaction)
+}
+
+client.on('interactionCreate', (interaction) => onInteraction(interaction))
 
 client.login(process.env.DISCORD_TOKEN)

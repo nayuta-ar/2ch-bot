@@ -5,6 +5,7 @@
   },
   "dependencies": {
     "base-64": "^1.0.0",
+    "crypto": "^1.0.1",
     "discord.js": "discordjs/discord.js",
     "moment": "^2.29.1",
     "mongoose": "^5.13.3",
