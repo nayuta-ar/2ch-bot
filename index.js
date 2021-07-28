@@ -105,7 +105,8 @@ client.on('messageCreate', async (message) => {
       return message.channel.setParent('868694406876790804')
     }
 
-    if (userData.tag === message.channel.topic) userName = `${userName}[主]`
+    if (userData.tag === message.channel.topic)
+      userName = `${userName}<:nushi:869905929146085396>`
 
     await message.delete()
     message.channel.send({
