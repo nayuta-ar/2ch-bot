@@ -9,8 +9,7 @@ const { Client, Intents, MessageEmbed } = require('discord.js'),
 tagGen = () => {
   const crypto = require('crypto')
   const S = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  const N = 5
-  return Array.from(crypto.randomFillSync(new Uint8Array(N)))
+  return Array.from(crypto.randomFillSync(new Uint8Array(5)))
     .map((n) => S[n % S.length])
     .join('')
 }
@@ -50,9 +49,12 @@ client.on('messageCreate', async (message) => {
     }
   )
 
+  if (message.member.roles.cache.some((role) => role.name === '運営'))
+    userName = `${userName}<:moderator:869939850638393374>`
+
   if (message.channel.id === '868493156277170196') {
     if (!message.content) return message.reply('メッセージを送信してください。')
-    
+
     const userTag = userData ? userData.tag : 'None'
     message.guild.channels
       .create(message.content, {
@@ -66,12 +68,91 @@ client.on('messageCreate', async (message) => {
         a.send({
           embeds: [
             new MessageEmbed()
-              .setTitle(`0 ${userData.nick}(${userTag})`)
+              .setTitle(`0 ${userName}(${userTag})`)
               .setDescription(message.content)
               .setColor('WHITE'),
           ],
         })
       })
+  }
+
+  if (message.channel.id === '870263903785992213') {
+    if (!message.content) return message.reply('メッセージを送信してください。')
+
+    const userTag = userData ? userData.tag : 'None'
+    message.guild.channels.cache
+      .get('870264227061989416')
+      .send({
+        embeds: [
+          new MessageEmbed()
+            .setTitle(`${userName}(${userTag})`)
+            .setDescription(message.content)
+            .setColor('WHITE'),
+        ],
+      })
+      .then((msg) =>
+        msg.channel.threads.create({
+          name: `${message.content}(${userTag})`,
+          autoArchiveDuration: 1440,
+          startMessage: msg,
+        })
+      )
+      .then((th) => {
+        th.setRateLimitPerUser(3)
+        message.reply(`${th} スレを立てました。`)
+      })
+  }
+
+  if (message.channel.parentId === '870264227061989416') {
+    num = async () => {
+      try {
+        let n = await message.channel.messages.fetch().then(
+          (a) =>
+            Number(
+              a
+                .filter((a) => a.author.id === client.user.id)
+                .first()
+                .embeds[0].title.split(' ')[0]
+            ) + 1
+        )
+        return n
+      } catch {
+        return 1
+      }
+    }
+
+    const userTag = userData ? userData.tag : 'None'
+    if (message.channel.name.slice(-6) === `${userTag})`)
+      userName = `${userName}<:nushi:869905929146085396>`
+
+    await message.delete()
+    message.channel.send({
+      embeds: [
+        new MessageEmbed()
+          .setTitle(`${await num()} ${userName}(${userData.tag})`)
+          .setDescription(message.content)
+          .setImage(
+            message.attachments.first()
+              ? message.attachments.first().proxyURL
+              : null
+          )
+          .setColor('WHITE'),
+      ],
+    })
+
+    if ((await num()) >= 1000) {
+      message.channel.send({
+        embeds: [
+          new MessageEmbed()
+            .setTitle('END')
+            .setDescription(
+              'レス数が1000以上になったので書き込みを中止しました。\n新しいスレッドを立てて会話してください。'
+            )
+            .setColor('RED'),
+        ],
+      })
+      setTimeout(() => message.channel.setArchived(true), 1000)
+    }
   }
 
   if (
@@ -95,7 +176,7 @@ client.on('messageCreate', async (message) => {
       }
     }
 
-    if ((await num()) > 1000) {
+    if ((await num()) >= 1000) {
       message.channel.send({
         embeds: [
           new MessageEmbed()
@@ -108,9 +189,6 @@ client.on('messageCreate', async (message) => {
       })
       return message.channel.setParent('868694406876790804')
     }
-
-    if (message.member.roles.cache.some((role) => role.name === '運営'))
-      userName = `${userName}<:moderator:869939850638393374>`
 
     const userTag = userData ? userData.tag : 'None'
     if (userTag === message.channel.topic)
