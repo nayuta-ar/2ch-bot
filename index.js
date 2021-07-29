@@ -52,30 +52,6 @@ client.on('messageCreate', async (message) => {
   if (message.member.roles.cache.some((role) => role.name === '運営'))
     userName = `${userName}<:moderator:869939850638393374>`
 
-  if (message.channel.id === '868493156277170196') {
-    if (!message.content) return message.reply('メッセージを送信してください。')
-
-    const userTag = userData ? userData.tag : 'None'
-    message.guild.channels
-      .create(message.content, {
-        parent: '868392026813644871',
-        position: 0,
-        rateLimitPerUser: 3,
-        topic: userTag,
-      })
-      .then((a) => {
-        message.reply(`<#${a.id}> スレッドを立てました。`)
-        a.send({
-          embeds: [
-            new MessageEmbed()
-              .setTitle(`0 ${userName}(${userTag})`)
-              .setDescription(message.content)
-              .setColor('WHITE'),
-          ],
-        })
-      })
-  }
-
   if (message.channel.id === '870263903785992213') {
     if (!message.content) return message.reply('メッセージを送信してください。')
 
