@@ -130,6 +130,20 @@ client.on('messageCreate', async (message) => {
   }
 })
 
+client.on('guildMemberAdd', (member) => {
+  message.client.channels.cache
+    .get('868688109003481148')
+    .send(
+      `${member.guild.name} に <@!${member.user.id}> が参加しました。宣伝したり、話したりしてくれると嬉しいです。`
+    )
+})
+
+client.on('guildMemberRemove', (member) => {
+  message.client.channels.cache
+    .get('868688109003481148')
+    .send(`${member.guild.name} から ${member.user.username} が退出しました。`)
+})
+
 const commands = {
   async name(interaction) {
     const userData = await userSchema.findOne(
