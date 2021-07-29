@@ -108,7 +108,7 @@ client.on('messageCreate', async (message) => {
     if (message.member.roles.cache.some((role) => role.name === '運営'))
       userName = `${userName}<:moderator:869939850638393374>`
 
-    const userTag = userData.tag ?? ''
+    const userTag = userData ? userData.tag : 'None'
     if (userTag === message.channel.topic)
       userName = `${userName}<:nushi:869905929146085396>`
 
