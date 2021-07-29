@@ -198,7 +198,7 @@ client.on('messageCreate', async (message) => {
     message.channel.send({
       embeds: [
         new MessageEmbed()
-          .setTitle(`${await num()} ${userName}(${userData.tag})`)
+          .setTitle(`${await num()} ${userName}(${userTag})`)
           .setDescription(message.content)
           .setImage(
             message.attachments.first()
