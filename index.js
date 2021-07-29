@@ -52,20 +52,21 @@ client.on('messageCreate', async (message) => {
 
   if (message.channel.id === '868493156277170196') {
     if (!message.content) return message.reply('メッセージを送信してください。')
-
+    
+    const userTag = userData ? userData.tag : 'None'
     message.guild.channels
       .create(message.content, {
         parent: '868392026813644871',
         position: 0,
         rateLimitPerUser: 3,
-        topic: userData.tag,
+        topic: userTag,
       })
       .then((a) => {
         message.reply(`<#${a.id}> スレッドを立てました。`)
         a.send({
           embeds: [
             new MessageEmbed()
-              .setTitle(`0 ${userData.nick}(${userData.tag})`)
+              .setTitle(`0 ${userData.nick}(${userTag})`)
               .setDescription(message.content)
               .setColor('WHITE'),
           ],
@@ -134,7 +135,7 @@ client.on('messageCreate', async (message) => {
 })
 
 client.on('guildMemberAdd', (member) => {
-  message.client.channels.cache
+  client.channels.cache
     .get('868688109003481148')
     .send(
       `${member.guild.name} に <@!${member.user.id}> が参加しました。宣伝したり、話したりしてくれると嬉しいです。`
@@ -142,7 +143,7 @@ client.on('guildMemberAdd', (member) => {
 })
 
 client.on('guildMemberRemove', (member) => {
-  message.client.channels.cache
+  client.channels.cache
     .get('868688109003481148')
     .send(`${member.guild.name} から ${member.user.username} が退出しました。`)
 })
