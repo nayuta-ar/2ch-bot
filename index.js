@@ -184,7 +184,7 @@ client.on('messageCreate', async (message) => {
           .setColor('WHITE'),
       ],
     })
-    message.channel.setPosition(0)
+    message.channel.setPosition(1)
   }
 })
 
