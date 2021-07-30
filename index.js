@@ -6,7 +6,9 @@ const { Client, Intents, MessageEmbed } = require('discord.js'),
       Intents.FLAGS.GUILD_MEMBERS,
   }),
   mongoose = require('mongoose')
-tagGen = () => {
+
+// 識別タグの作成
+const tagGen = () => {
   const crypto = require('crypto')
   const S = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
   return Array.from(crypto.randomFillSync(new Uint8Array(5)))
@@ -14,6 +16,7 @@ tagGen = () => {
     .join('')
 }
 
+// MongoDBに接続
 mongoose.connect(process.env.MONGODB_URI, {
   useCreateIndex: true,
   useNewUrlParser: true,
@@ -23,6 +26,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 const userSchema = require('./models/user.js')
 
+// Bot起動時に発火するイベント
 client.once('ready', async () => {
   console.log(`${client.user.tag} でログインしました`)
 
@@ -31,6 +35,7 @@ client.once('ready', async () => {
   }, 20000)
 })
 
+// メッセージ送信時に発火するイベント
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return
 
@@ -64,15 +69,21 @@ client.on('messageCreate', async (message) => {
     }
   )
 
+  // システムメッセージは無視 (ウェルカムメッセージなど)
+  if (message.system) return
+
+  // 発言数を1増やす
   await userData
     .updateOne({
       count: (userData.count += 1),
     })
     .catch(() => {})
 
+  // 「運営」ロールがあれば :moderator: バッジをつける
   if (message.member.roles.cache.some((role) => role.name === '運営'))
     userName = `${userName}<:moderator:869939850638393374>`
 
+  // message.content がnullの場合はreturn (画像だけ送信など)
   if (message.channel.id === '870263903785992213') {
     if (!message.content) return message.reply('メッセージを送信してください。')
 
@@ -100,17 +111,19 @@ client.on('messageCreate', async (message) => {
       })
   }
 
+  // チャンネルがスレッドかつ #📚｜スレ一覧 配下の場合
   if (
     message.channel.type === 'GUILD_PUBLIC_THREAD' &&
     message.channel.parentId === '870264227061989416'
   ) {
+    // レス番号を計算
     num = async () => {
       try {
         let n = await message.channel.messages.fetch().then(
           (a) =>
             Number(
               a
-                .filter((a) => a.author.id === client.user.id)
+                .filter((a) => a.author.id === client.user.id && a.embeds[0])
                 .first()
                 .embeds[0].title.split(' ')[0]
             ) + 1
@@ -121,45 +134,78 @@ client.on('messageCreate', async (message) => {
       }
     }
 
+    // スレ主の場合 :nushi: バッジをつける
     const userTag = userData ? userData.tag : 'None'
     if (message.channel.name.slice(-6) === `${userTag})`)
       userName = `${userName}<:nushi:869905929146085396>`
 
-    await message.delete()
-    message.channel.send({
-      embeds: [
-        new MessageEmbed()
-          .setTitle(`${await num()} ${userName}(${userData.tag})`)
-          .setDescription(message.content)
-          .setImage(
-            message.attachments.first()
-              ? message.attachments.first().proxyURL
-              : null
-          )
-          .setColor(userColor),
-      ],
-    })
+    const embed = new MessageEmbed()
+      .setTitle(`${await num()} ${userName}(${userData.tag})`)
+      .setDescription(message.content)
+      .setColor(userColor)
 
-    if ((await num()) >= 1000) {
-      message.channel.send({
+    let notImage = false
+    if (message.attachments.first()) {
+      if (message.attachments.first().contentType.includes('image/'))
+        embed.setImage(message.attachments.first().proxyURL)
+      else notImage = true
+    }
+
+    await message.delete()
+    message.channel
+      .send({
         embeds: [
           new MessageEmbed()
-            .setTitle('END')
-            .setDescription(
-              'レス数が1000以上になったので書き込みを中止しました。\n新しいスレッドを立てて会話してください。'
+            .setTitle(`${await num()} ${userName}(${userData.tag})`)
+            .setDescription(message.content)
+            .setImage(
+              message.attachments.first()
+                ? message.attachments.first().proxyURL
+                : null
             )
-            .setColor('RED'),
+            .setColor(userColor),
         ],
       })
-      setTimeout(() => message.channel.setArchived(true), 1000)
+      .then((msg) => {
+        if (notImage) {
+          msg.reply({
+            content: '添付ファイル',
+            files: [message.attachments.first()],
+          })
+        }
+      })
+
+    // 1000レスに到達した時
+    if ((await num()) >= 1000) {
+      message.channel
+        .send({
+          embeds: [
+            new MessageEmbed()
+              .setTitle('END')
+              .setDescription(
+                'レス数が1000以上になったので書き込みを中止しました。\n新しいスレッドを立てて会話してください。'
+              )
+              .setColor('RED'),
+          ],
+        })
+        .then(() => message.channel.setArchived(true))
     }
   }
 
   if (
     message.channel.type === 'GUILD_TEXT' &&
     message.channel.id === '870264227061989416'
-  )
-    message.delete()
+  ) {
+    const msg = await message.reply(
+      'スレを立てる場合は、<#870263903785992213> にスレタイトルを送信してください。'
+    )
+    setTimeout(() => {
+      msg.delete()
+      message.delete().catch(() => {})
+    }, 10000)
+  }
+
+  if (!message.channel.parent) return
 
   if (
     message.channel.parent.id === '868392026813644871' ||
@@ -218,20 +264,25 @@ client.on('messageCreate', async (message) => {
   }
 })
 
+// メンバー参加時に発火するイベント
 client.on('guildMemberAdd', (member) => {
   client.channels.cache
     .get('868688109003481148')
     .send(
-      `${member.guild.name} に <@!${member.user.id}> が参加しました。宣伝したり、話したりしてくれると嬉しいです。`
+      `**${member.guild.name}** に <@!${member.user.id}> が参加しました。宣伝したり、話したりしてくれると嬉しいです。`
     )
 })
 
+// メンバー退出時に発火するイベント
 client.on('guildMemberRemove', (member) => {
   client.channels.cache
     .get('868688109003481148')
-    .send(`${member.guild.name} から ${member.user.username} が退出しました。`)
+    .send(
+      `**${member.guild.name}** から **${member.user.tag}** が退出しました。`
+    )
 })
 
+// Slash commandsのリスト
 const commands = {
   async name(interaction) {
     const userData = await userSchema.findOne(
@@ -253,9 +304,9 @@ const commands = {
       })
       .catch(() => {})
     interaction.reply({
-      content: `ニックネームを ${
+      content: `ニックネームを **${
         interaction.options.get('name').value
-      } に変更しました。`,
+      }** に変更しました。`,
       ephemeral: true,
     })
     return
@@ -295,7 +346,7 @@ const commands = {
           })
         else
           return interaction.reply({
-            content: `<@!${user.id}> (${user.id})\nNick: ${user.nick}\nTag: ${user.tag}\nCount: ${user.count}`,
+            content: `<@!${user.id}> (**${user.id}**)\nNick: **${user.nick}**\nTag: **${user.tag}**\nCount: **${user.count}**`,
             ephemeral: true,
           })
       }
@@ -304,10 +355,14 @@ const commands = {
 }
 
 async function onInteraction(interaction) {
+  // Slash commands出ない場合return
   if (!interaction.isCommand()) return
+
   return commands[interaction.commandName](interaction)
 }
 
+// インタラクション発生時に発火するイベント
 client.on('interactionCreate', (interaction) => onInteraction(interaction))
 
+// TOKENでBotにログイン
 client.login(process.env.DISCORD_TOKEN)
