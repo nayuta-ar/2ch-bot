@@ -241,7 +241,7 @@ const commands = {
       (e, user) => {
         if (!user)
           userSchema.create({
-            id: message.author.id,
+            id: interaction.member.id,
             nick: interaction.options.get('name').value,
             tag: tagGen(),
           })
@@ -259,6 +259,19 @@ const commands = {
       ephemeral: true,
     })
     return
+  },
+  async message_count(interaction) {
+    await userSchema.findOne(
+      {
+        id: interaction.member.id,
+      },
+      (e, user) => {
+        return interaction.reply({
+          content: `あなたは、これまで **${user.count}メッセージ** 送信しています。`,
+          ephemeral: true,
+        })
+      }
+    )
   },
   async reset(interaction) {
     return await interaction.reply({
@@ -282,7 +295,7 @@ const commands = {
           })
         else
           return interaction.reply({
-            content: `<@!${user.id}> (${user.id})\nNick: ${user.nick}\nTag: ${user.tag}`,
+            content: `<@!${user.id}> (${user.id})\nNick: ${user.nick}\nTag: ${user.tag}\nCount: ${user.count}`,
             ephemeral: true,
           })
       }
