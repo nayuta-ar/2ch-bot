@@ -35,6 +35,7 @@ client.on('messageCreate', async (message) => {
   if (message.author.bot) return
 
   let userName = '名無しさん'
+  let userColor = '#ffffff'
   const userData = await userSchema.findOne(
     {
       id: message.author.id,
@@ -45,9 +46,29 @@ client.on('messageCreate', async (message) => {
           id: message.author.id,
           tag: tagGen(),
         })
-      else userName = user.nick
+      else {
+        userName = user.nick
+        if (10 <= user.count && user.count < 30) userColor = '#f4fff4'
+        else if (user.count < 50) userColor = '#eaffea'
+        else if (user.count < 100) userColor = '#d5ffd5'
+        else if (user.count < 200) userColor = '#aaffaa'
+        else if (user.count < 300) userColor = '#80ff80'
+        else if (user.count < 500) userColor = '#55ff55'
+        else if (user.count < 1000) userColor = '#2bff2b'
+        else if (user.count < 1500) userColor = '#00ff00'
+        else if (user.count < 2000) userColor = '#00d500'
+        else if (user.count < 3000) userColor = '#00aa00'
+        else if (user.count < 5000) userColor = '#008000'
+        else userColor = '#005500'
+      }
     }
   )
+
+  await userData
+    .updateOne({
+      count: (userData.count += 1),
+    })
+    .catch(() => {})
 
   if (message.member.roles.cache.some((role) => role.name === '運営'))
     userName = `${userName}<:moderator:869939850638393374>`
@@ -63,7 +84,7 @@ client.on('messageCreate', async (message) => {
           new MessageEmbed()
             .setTitle(`${userName}(${userTag})`)
             .setDescription(message.content)
-            .setColor('WHITE'),
+            .setColor(userColor),
         ],
       })
       .then((msg) =>
@@ -79,7 +100,10 @@ client.on('messageCreate', async (message) => {
       })
   }
 
-  if (message.channel.parentId === '870264227061989416') {
+  if (
+    message.channel.type === 'GUILD_PUBLIC_THREAD' &&
+    message.channel.parentId === '870264227061989416'
+  ) {
     num = async () => {
       try {
         let n = await message.channel.messages.fetch().then(
@@ -112,7 +136,7 @@ client.on('messageCreate', async (message) => {
               ? message.attachments.first().proxyURL
               : null
           )
-          .setColor('WHITE'),
+          .setColor(userColor),
       ],
     })
 
@@ -130,6 +154,12 @@ client.on('messageCreate', async (message) => {
       setTimeout(() => message.channel.setArchived(true), 1000)
     }
   }
+
+  if (
+    message.channel.type === 'GUILD_TEXT' &&
+    message.channel.id === '870264227061989416'
+  )
+    message.delete()
 
   if (
     message.channel.parent.id === '868392026813644871' ||
@@ -181,7 +211,7 @@ client.on('messageCreate', async (message) => {
               ? message.attachments.first().proxyURL
               : null
           )
-          .setColor('WHITE'),
+          .setColor(userColor),
       ],
     })
     message.channel.setPosition(1)
@@ -217,9 +247,11 @@ const commands = {
           })
       }
     )
-    await userData.updateOne({
-      nick: interaction.options.get('name').value,
-    })
+    await userData
+      .updateOne({
+        nick: interaction.options.get('name').value,
+      })
+      .catch(() => {})
     interaction.reply({
       content: `ニックネームを ${
         interaction.options.get('name').value
