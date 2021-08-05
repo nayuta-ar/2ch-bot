@@ -53,6 +53,7 @@ client.on('messageCreate', async (message) => {
         })
       else {
         userName = user.nick
+
         if (10 <= user.count && user.count < 30) userColor = '#f4fff4'
         else if (user.count < 50) userColor = '#eaffea'
         else if (user.count < 100) userColor = '#d5ffd5'
@@ -65,6 +66,14 @@ client.on('messageCreate', async (message) => {
         else if (user.count < 3000) userColor = '#00aa00'
         else if (user.count < 5000) userColor = '#008000'
         else userColor = '#005500'
+
+        if (
+          !message.member.roles.cache.some((role) => role.name === '常連') &&
+          user.count > 100
+        )
+          message.member.roles.add(
+            message.guild.roles.cache.find((role) => role.name === '常連')
+          )
       }
     }
   )
@@ -116,6 +125,8 @@ client.on('messageCreate', async (message) => {
     message.channel.type === 'GUILD_PUBLIC_THREAD' &&
     message.channel.parentId === '870264227061989416'
   ) {
+    let m_content = message.content
+
     // レス番号を計算
     num = async () => {
       try {
@@ -139,9 +150,21 @@ client.on('messageCreate', async (message) => {
     if (message.channel.name.slice(-6) === `${userTag})`)
       userName = `${userName}<:nushi:869905929146085396>`
 
+    if (message.reference) {
+      let m = await message.channel.messages
+        .fetch({ limit: 100 })
+        .then((msgs) =>
+          msgs.filter((msg) => msg.id === message.reference.messageId).first()
+        )
+
+      m_content = `[>>${m.embeds[0].title.split(' ')[0]}](${m.url})\n${
+        message.content
+      }`
+    }
+
     const embed = new MessageEmbed()
       .setTitle(`${await num()} ${userName}(${userData.tag})`)
-      .setDescription(message.content)
+      .setDescription(m_content)
       .setColor(userColor)
 
     let notImage = false
@@ -154,17 +177,7 @@ client.on('messageCreate', async (message) => {
     await message.delete()
     message.channel
       .send({
-        embeds: [
-          new MessageEmbed()
-            .setTitle(`${await num()} ${userName}(${userData.tag})`)
-            .setDescription(message.content)
-            .setImage(
-              message.attachments.first()
-                ? message.attachments.first().proxyURL
-                : null
-            )
-            .setColor(userColor),
-        ],
+        embeds: [embed],
       })
       .then((msg) => {
         if (notImage) {
