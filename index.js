@@ -97,7 +97,7 @@ client.on('messageCreate', async (message) => {
     if (!message.content) return message.reply('メッセージを送信してください。')
 
     const userTag = userData ? userData.tag : 'None'
-    message.guild.channels.cache
+    const thStartMsg = await message.guild.channels.cache
       .get('870264227061989416')
       .send({
         embeds: [
@@ -107,17 +107,19 @@ client.on('messageCreate', async (message) => {
             .setColor(userColor),
         ],
       })
-      .then((msg) =>
-        msg.channel.threads.create({
-          name: `${message.content}(${userTag})`,
-          autoArchiveDuration: 1440,
-          startMessage: msg,
-        })
-      )
-      .then((th) => {
-        th.setRateLimitPerUser(3)
-        message.reply(`${th} スレを立てました。`)
-      })
+    const createTh = await thStartMsg.channel.threads.create({
+      name: `${message.content}(${userTag})`,
+      autoArchiveDuration: 1440,
+      startMessage: thStartMsg,
+    })
+
+    await createTh.setRateLimitPerUser(3)
+
+    const addMsg = await createTh.send('Loading...')
+    await addMsg.edit(`${message.author}<@&875986483260043284>`)
+    await addMsg.delete()
+
+    message.reply(`${createTh} スレを立てました。`)
   }
 
   // チャンネルがスレッドかつ #📚｜スレ一覧 配下の場合
