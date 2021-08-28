@@ -1,11 +1,18 @@
-const { Client, Intents, MessageEmbed } = require('discord.js'),
-  client = new Client({
-    intents:
-      Intents.FLAGS.GUILDS |
-      Intents.FLAGS.GUILD_MESSAGES |
-      Intents.FLAGS.GUILD_MEMBERS,
-  }),
-  mongoose = require('mongoose')
+const {
+  Client,
+  Intents,
+  MessageEmbed,
+  version: djsversion,
+} = require('discord.js')
+const client = new Client({
+  intents: [
+    Intents.FLAGS.GUILDS,
+    Intents.FLAGS.GUILD_MESSAGES,
+    Intents.FLAGS.GUILD_MEMBERS,
+  ],
+})
+const mongoose = require('mongoose')
+const { mem, cpu, os } = require('node-os-utils')
 
 // 識別タグの作成
 const tagGen = () => {
@@ -38,6 +45,37 @@ client.once('ready', async () => {
 // メッセージ送信時に発火するイベント
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return
+
+  if (message.content.startsWith('2ch!')) {
+    const args = message.content.slice(4).trim().split(/ +/)
+    const command = args.shift().toLowerCase()
+
+    if (command === 'eval') {
+      if (message.author.id !== '723052392911863858') return
+
+      try {
+        const { inspect } = require('util')
+        const evaled = await eval(args.join(' '))
+        message.reply({
+          embeds: [
+            new MessageEmbed()
+              .setTitle('出力')
+              .setDescription(`\`\`\`js\n${inspect(evaled)}\n\`\`\``)
+              .setColor('BLURPLE'),
+          ],
+        })
+      } catch (e) {
+        message.reply({
+          embeds: [
+            new MessageEmbed()
+              .setTitle('エラー')
+              .setDescription(`\`\`\`js\n${e}\n\`\`\``)
+              .setColor('RED'),
+          ],
+        })
+      }
+    }
+  }
 
   let userName = '名無しさん'
   let userColor = '#ffffff'
@@ -96,7 +134,7 @@ client.on('messageCreate', async (message) => {
   if (message.channel.id === '870263903785992213') {
     if (!message.content) return message.reply('メッセージを送信してください。')
 
-    const userTag = userData ? userData.tag : 'None'
+    const userTag = userData ? userData.tag : 'Unkuown'
     const thStartMsg = await message.guild.channels.cache
       .get('870264227061989416')
       .send({
@@ -203,7 +241,10 @@ client.on('messageCreate', async (message) => {
               .setColor('RED'),
           ],
         })
-        .then(() => message.channel.setArchived(true))
+        .then(() => {
+          message.channel.setLocked(true)
+          message.channel.setArchived(true)
+        })
     }
   }
 
@@ -367,13 +408,84 @@ const commands = {
       }
     )
   },
+  async ranking(interaction) {
+    let rankData = await userSchema.find().sort({ count: -1 }).exec()
+    rankData = rankData
+      .slice(0, 7)
+      .map((rd, i) => `**\`${i + 1}.\`** \`${rd.count}\` ${rd.nick}(${rd.tag})`)
+      .join('\n')
+
+    return interaction.reply({
+      content: rankData,
+      ephemeral: true,
+    })
+  },
+  async status(interaction) {
+    // await interaction.deferReply({ ephemeral: true })
+
+    let rss = process.memoryUsage().rss
+    if (rss instanceof Array) {
+      rss = rss.reduce((sum, val) => sum + val, 0)
+    }
+    let heapUsed = process.memoryUsage().heapUsed
+    if (heapUsed instanceof Array) {
+      heapUsed = heapUsed.reduce((sum, val) => sum + val, 0)
+    }
+
+    const { totalMemMb, usedMemMb } = await mem.info()
+
+    return interaction.reply({
+      content: `\`\`\`\nPing: ${Math.round(client.ws.ping)}ms\nNode.js: v${
+        process.versions.node
+      }\ndiscord.js: v${djsversion}\nOS: ${await os.oos()}\nCPU: ${cpu.model()}\n├ コア数: ${cpu.count()}\n└ 使用率: ${await cpu.usage()}%\nメモリ: ${totalMemMb}MB\n└ 使用量: ${(
+        heapUsed /
+        1024 /
+        1024
+      ).toFixed(2)}MB\n\`\`\``,
+      ephemeral: true,
+    })
+  },
+}
+
+// Buttonsのリスト
+const buttons = {
+  async sudo(interaction) {
+    if (
+      interaction.member.roles.cache.some((role) => role.name === '管理者権限')
+    ) {
+      interaction.member.roles.remove(
+        interaction.member.guild.roles.cache.find(
+          (role) => role.name === '管理者権限'
+        )
+      )
+
+      return interaction.reply({
+        content:
+          '管理者権限を外しました。\nボタンを再度押すと、管理者権限を取得することができます。',
+        ephemeral: true,
+      })
+    } else {
+      interaction.member.roles.add(
+        interaction.member.guild.roles.cache.find(
+          (role) => role.name === '管理者権限'
+        )
+      )
+
+      return interaction.reply({
+        content:
+          '管理者権限を付与しました。\nボタンを再度押すと、管理者権限を外すことができます。',
+        ephemeral: true,
+      })
+    }
+  },
 }
 
 async function onInteraction(interaction) {
-  // Slash commands出ない場合return
-  if (!interaction.isCommand()) return
-
-  return commands[interaction.commandName](interaction)
+  // Buttons
+  if (interaction.isButton()) return buttons[interaction.customId](interaction)
+  // Slash commands
+  else if (interaction.isCommand())
+    return commands[interaction.commandName](interaction)
 }
 
 // インタラクション発生時に発火するイベント
