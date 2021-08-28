@@ -4,13 +4,10 @@
     "format": "npx prettier -w ."
   },
   "dependencies": {
-    "base-64": "^1.0.0",
     "crypto": "^1.0.1",
-    "discord.js": "discordjs/discord.js",
-    "moment": "^2.29.1",
+    "discord.js": "^13.1.0",
     "mongoose": "^5.13.3",
-    "node-os-utils": "^1.3.5",
-    "utf8": "^3.0.0"
+    "node-os-utils": "^1.3.5"
   },
   "devDependencies": {
     "prettier": "2.3.2"

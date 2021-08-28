@@ -341,6 +341,8 @@ client.on('guildMemberRemove', (member) => {
 // Slash commandsのリスト
 const commands = {
   async name(interaction) {
+    await interaction.deferReply({ ephemeral: true })
+
     const userData = await userSchema.findOne(
       {
         id: interaction.member.id,
@@ -359,7 +361,7 @@ const commands = {
         nick: interaction.options.get('name').value,
       })
       .catch(() => {})
-    interaction.reply({
+    interaction.editReply({
       content: `ニックネームを **${
         interaction.options.get('name').value
       }** に変更しました。`,
@@ -368,12 +370,14 @@ const commands = {
     return
   },
   async message_count(interaction) {
+    await interaction.deferReply({ ephemeral: true })
+
     await userSchema.findOne(
       {
         id: interaction.member.id,
       },
       (e, user) => {
-        return interaction.reply({
+        return interaction.editReply({
           content: `あなたは、これまで **${user.count}メッセージ** 送信しています。`,
           ephemeral: true,
         })
@@ -390,18 +394,20 @@ const commands = {
     })
   },
   async tag_search(interaction) {
+    await interaction.deferReply({ ephemeral: true })
+
     await userSchema.findOne(
       {
         tag: interaction.options.get('tag').value,
       },
       (e, user) => {
         if (!user)
-          return interaction.reply({
+          return interaction.editReply({
             content: 'ユーザーが存在しません。',
             ephemeral: true,
           })
         else
-          return interaction.reply({
+          return interaction.editReply({
             content: `<@!${user.id}> (**${user.id}**)\nNick: **${user.nick}**\nTag: **${user.tag}**\nCount: **${user.count}**`,
             ephemeral: true,
           })
@@ -409,19 +415,18 @@ const commands = {
     )
   },
   async ranking(interaction) {
+    await interaction.deferReply({ ephemeral: true })
+
     let rankData = await userSchema.find().sort({ count: -1 }).exec()
     rankData = rankData
       .slice(0, 7)
       .map((rd, i) => `**\`${i + 1}.\`** \`${rd.count}\` ${rd.nick}(${rd.tag})`)
       .join('\n')
 
-    return interaction.reply({
-      content: rankData,
-      ephemeral: true,
-    })
+    return interaction.editReply(rankData)
   },
   async status(interaction) {
-    // await interaction.deferReply({ ephemeral: true })
+    await interaction.deferReply({ ephemeral: true })
 
     let rss = process.memoryUsage().rss
     if (rss instanceof Array) {
@@ -434,22 +439,23 @@ const commands = {
 
     const { totalMemMb, usedMemMb } = await mem.info()
 
-    return interaction.reply({
-      content: `\`\`\`\nPing: ${Math.round(client.ws.ping)}ms\nNode.js: v${
+    return interaction.editReply(
+      `\`\`\`\nPing: ${Math.round(client.ws.ping)}ms\nNode.js: v${
         process.versions.node
       }\ndiscord.js: v${djsversion}\nOS: ${await os.oos()}\nCPU: ${cpu.model()}\n├ コア数: ${cpu.count()}\n└ 使用率: ${await cpu.usage()}%\nメモリ: ${totalMemMb}MB\n└ 使用量: ${(
         heapUsed /
         1024 /
         1024
-      ).toFixed(2)}MB\n\`\`\``,
-      ephemeral: true,
-    })
+      ).toFixed(2)}MB\n\`\`\``
+    )
   },
 }
 
 // Buttonsのリスト
 const buttons = {
   async sudo(interaction) {
+    await interaction.deferReply()
+
     if (
       interaction.member.roles.cache.some((role) => role.name === '管理者権限')
     ) {
@@ -459,7 +465,7 @@ const buttons = {
         )
       )
 
-      return interaction.reply({
+      return interaction.editReply({
         content:
           '管理者権限を外しました。\nボタンを再度押すと、管理者権限を取得することができます。',
         ephemeral: true,
@@ -471,7 +477,7 @@ const buttons = {
         )
       )
 
-      return interaction.reply({
+      return interaction.editReply({
         content:
           '管理者権限を付与しました。\nボタンを再度押すと、管理者権限を外すことができます。',
         ephemeral: true,
