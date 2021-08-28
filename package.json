@@ -1,7 +1,7 @@
 {
   "scripts": {
     "start": "node index.js",
-    "format": "yarn prettier -w ."
+    "format": "npx prettier -w ."
   },
   "dependencies": {
     "base-64": "^1.0.0",

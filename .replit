@@ -1,2 +1,2 @@
-run = "yarn start"
+run = "npm start"
 language = "nix"
