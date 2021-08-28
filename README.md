@@ -13,5 +13,5 @@ index.js のチャンネル ID とカテゴリ ID を好みのものに設定し
 
 ## インストール, 起動
 
-1. `yarn install`
-1. `yarn start`
+1. `npm install`
+1. `npm start`
