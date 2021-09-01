@@ -38,55 +38,64 @@ client
   .on('messageCreate', async (message) => {
     if (message.author.bot) return
 
-    let userName = '名無しさん'
-    let userColor = '#ffffff'
-    let userTag = 'Unknown'
+    const getUser = () => {
+      return new Promise((resolve) => {
+        con.query(
+          'SELECT * FROM `users` WHERE `userId` = ?',
+          [message.author.id],
+          (e, rows) => {
+            if (!rows[0]) {
+              con.query('INSERT INTO `users` (`userId`, `tag`) VALUES (?, ?)', [
+                message.author.id,
+                tagGen(),
+              ])
 
-    con.query(
-      'SELECT * FROM `users` WHERE `userId` = ?',
-      [message.author.id],
-      (e, rows) => {
-        if (!rows[0]) {
-          con.query('INSERT INTO `users` (`userId`, `tag`) VALUES (?, ?)', [
-            message.author.id,
-            tagGen(),
-          ])
-        } else {
-          userName = rows[0].nickName
-          userTag = rows[0].tag
+              resolve({
+                userId: message.author.id,
+                nickName: '名無しさん',
+                tag: 'Unknown',
+                messageCount: 0,
+              })
+            } else {
+              con.query(
+                'UPDATE `users` SET `messageCount` = ? WHERE `userId` = ?',
+                [rows[0].messageCount + 1, message.author.id],
+              )
 
-          if (rows[0].messageCount >= 10 && rows[0].messageCount < 30)
-            userColor = '#f4fff4'
-          else if (rows[0].messageCount < 50) userColor = '#eaffea'
-          else if (rows[0].messageCount < 100) userColor = '#d5ffd5'
-          else if (rows[0].messageCount < 200) userColor = '#aaffaa'
-          else if (rows[0].messageCount < 300) userColor = '#80ff80'
-          else if (rows[0].messageCount < 500) userColor = '#55ff55'
-          else if (rows[0].messageCount < 1000) userColor = '#2bff2b'
-          else if (rows[0].messageCount < 1500) userColor = '#00ff00'
-          else if (rows[0].messageCount < 2000) userColor = '#00d500'
-          else if (rows[0].messageCount < 3000) userColor = '#00aa00'
-          else if (rows[0].messageCount < 5000) userColor = '#008000'
-          else userColor = '#005500'
+              resolve(rows[0])
+            }
+          },
+        )
+      })
+    }
 
-          if (
-            !message.member.roles.cache.some((role) => role.name === '常連') &&
-            rows[0].messageCount >= 100
-          )
-            message.member.roles.add(
-              message.guild.roles.cache.find((role) => role.name === '常連'),
-            )
+    const userData = await getUser()
 
-          con.query(
-            'UPDATE `users` SET `messageCount` = ? WHERE `userId` = ?',
-            [(rows[0].messageCount += 1), message.author.id],
-          )
-        }
-      },
+    let userColor
+    if (userData.messageCount < 10) userColor = '#FFFFFF'
+    else if (userData.messageCount < 30) userColor = '#F4FFF4'
+    else if (userData.messageCount < 50) userColor = '#EAFFEA'
+    else if (userData.messageCount < 100) userColor = '#D5FFD5'
+    else if (userData.messageCount < 200) userColor = '#AAFFAA'
+    else if (userData.messageCount < 300) userColor = '#80FF80'
+    else if (userData.messageCount < 500) userColor = '#55FF55'
+    else if (userData.messageCount < 1000) userColor = '#2BFF2B'
+    else if (userData.messageCount < 1500) userColor = '#00FF00'
+    else if (userData.messageCount < 2000) userColor = '#00D500'
+    else if (userData.messageCount < 3000) userColor = '#00AA00'
+    else if (userData.messageCount < 5000) userColor = '#008000'
+    else userColor = '#005500'
+
+    if (
+      !message.member.roles.cache.some((role) => role.name === '常連') &&
+      userData.messageCount >= 100
     )
+      message.member.roles.add(
+        message.guild.roles.cache.find((role) => role.name === '常連'),
+      )
 
     if (message.member.roles.cache.some((role) => role.name === '運営'))
-      userName = `${userName}<:moderator:869939850638393374>`
+      userData.nickName = `${userData.nickName}<:moderator:869939850638393374>`
 
     if (
       message.channel.type === 'GUILD_TEXT' &&
@@ -103,7 +112,7 @@ client
       const thStartMsg = await message.channel.send({
         embeds: [
           new MessageEmbed()
-            .setTitle(`${userName}(${userTag})`)
+            .setTitle(`${userData.nickName}(${userData.tag})`)
             .setDescription(message.content)
             .setColor(userColor),
         ],
@@ -126,11 +135,16 @@ client
       await addMsg.delete()
     }
 
+    if (message.channel.parentId === '870264227061989416')
+      return message.reply(
+        'こちらのスレはサービスを終了しました。\nスレ主の方は新しいスレを立ててください。',
+      )
+
     if (
       message.channel.type === 'GUILD_PUBLIC_THREAD' &&
       message.channel.parent.parentId === '876368038528700436'
     ) {
-      function getThread() {
+      const getThread = () => {
         return new Promise((resolve) => {
           con.query(
             'SELECT * FROM `threads` WHERE `threadId` = ?',
@@ -149,11 +163,11 @@ client
 
       const threadData = await getThread()
 
-      if (threadData.defaultName && userName === '名無しさん')
-        userName = threadData.defaultName
+      if (threadData.defaultName && userData.nickName === '名無しさん')
+        userData.nickName = threadData.defaultName
 
       if (threadData.ownerId === message.author.id)
-        userName = `${userName}<:nushi:869905929146085396>`
+        userData.nickName = `${userData.nickName}<:nushi:869905929146085396>`
 
       let sendContent = message.content
 
@@ -172,7 +186,9 @@ client
       }
 
       const embed = new MessageEmbed()
-        .setTitle(`${threadData.resNum + 1} ${userName}(${userTag})`)
+        .setTitle(
+          `${threadData.resNum + 1} ${userData.nickName}(${userData.tag})`,
+        )
         .setDescription(sendContent)
         .setColor(userColor)
 
@@ -251,10 +267,10 @@ client
                 ],
               )
             } else {
-              con.query('UPDATE `users` SET `nick` = ? WHERE `userId` = ?', [
-                interaction.options.getString('name'),
-                interaction.user.id,
-              ])
+              con.query(
+                'UPDATE `users` SET `nickName` = ? WHERE `userId` = ?',
+                [interaction.options.getString('name'), interaction.user.id],
+              )
             }
             await interaction.editReply(
               `ニックネームを \`${interaction.options.getString(
@@ -284,16 +300,6 @@ client
         )
         break
       }
-      case 'reset': {
-        await interaction.reply({
-          embeds: [
-            new MessageEmbed().setTitle(
-              String(interaction.options.get('num').value),
-            ),
-          ],
-        })
-        break
-      }
       case 'tag_search': {
         await interaction.deferReply({ ephemeral: true })
 
@@ -312,10 +318,23 @@ client
         break
       }
       case 'ranking': {
-        await interaction.reply({
-          content: '現在、ランキング機能を一時的に停止しています。',
-          ephemeral: true,
-        })
+        await interaction.deferReply({ ephemeral: true })
+
+        con.query(
+          'SELECT * FROM `users` ORDER BY `messageCount` DESC LIMIT 7',
+          async (e, rows) => {
+            await interaction.editReply(
+              rows
+                .map(
+                  (rd, i) =>
+                    `**\`${i + 1}.\`** \`${rd.messageCount}\` ${rd.nickName}(${
+                      rd.tag
+                    })`,
+                )
+                .join('\n'),
+            )
+          },
+        )
         break
       }
       case 'status': {
