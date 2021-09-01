@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 const {
   Client,
   Intents,
@@ -11,11 +13,9 @@ const client = new Client({
     Intents.FLAGS.GUILD_MEMBERS,
   ],
 })
-const mongoose = require('mongoose')
 const { mem, cpu, os } = require('node-os-utils')
-const mysql = require('mysql')
+const { createConnection } = require('mysql')
 
-// 識別タグの作成
 const tagGen = () => {
   const crypto = require('crypto')
   const S = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -24,109 +24,83 @@ const tagGen = () => {
     .join('')
 }
 
-// MongoDBに接続
-mongoose.connect(process.env.MONGODB_URI, {
-  useCreateIndex: true,
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  useFindAndModify: false,
-})
-
-const userSchema = require('./models/user.js')
-
-const db = mysql.createConnection({
+const con = createConnection({
   host: process.env.MYSQL_HOST,
   user: process.env.MYSQL_USER,
   password: process.env.MYSQL_PASS,
-  database: process.env.MYSQL_NAME,
+  database: process.env.MYSQL_DB,
 })
 
-// Bot起動時に発火するイベント
-client.once('ready', () => {
-  console.log(`${client.user.tag} でログインしました。`)
-})
+con.connect()
 
-// メッセージ送信時に発火するイベント
-client.on('messageCreate', async (message) => {
-  if (message.author.bot) return
+client
+  .once('ready', () => console.log(`${client.user.tag} でログインしました。`))
+  .on('messageCreate', async (message) => {
+    if (message.author.bot) return
 
-  let userName = '名無しさん'
-  let userColor = '#ffffff'
-  const userData = await userSchema.findOne(
-    {
-      id: message.author.id,
-    },
-    (e, user) => {
-      if (!user)
-        userSchema.create({
-          id: message.author.id,
-          tag: tagGen(),
-        })
-      else {
-        userName = user.nick
+    let userName = '名無しさん'
+    let userColor = '#ffffff'
+    let userTag = 'Unknown'
 
-        if (10 <= user.count && user.count < 30) userColor = '#f4fff4'
-        else if (user.count < 50) userColor = '#eaffea'
-        else if (user.count < 100) userColor = '#d5ffd5'
-        else if (user.count < 200) userColor = '#aaffaa'
-        else if (user.count < 300) userColor = '#80ff80'
-        else if (user.count < 500) userColor = '#55ff55'
-        else if (user.count < 1000) userColor = '#2bff2b'
-        else if (user.count < 1500) userColor = '#00ff00'
-        else if (user.count < 2000) userColor = '#00d500'
-        else if (user.count < 3000) userColor = '#00aa00'
-        else if (user.count < 5000) userColor = '#008000'
-        else userColor = '#005500'
+    con.query(
+      'SELECT * FROM `users` WHERE `userId` = ?',
+      [message.author.id],
+      (e, rows) => {
+        if (!rows) {
+          con.query('INSERT INTO `users` (`userId`, `tag`) VALUES (?, ?)', [
+            message.author.id,
+            tagGen(),
+          ])
+        } else {
+          userName = rows[0].nickName
+          userTag = rows[0].tag
 
-        if (
-          !message.member.roles.cache.some((role) => role.name === '常連') &&
-          user.count > 100
-        )
-          message.member.roles.add(
-            message.guild.roles.cache.find((role) => role.name === '常連')
+          if (rows[0].messageCount >= 10 && rows[0].messageCount < 30)
+            userColor = '#f4fff4'
+          else if (rows[0].messageCount < 50) userColor = '#eaffea'
+          else if (rows[0].messageCount < 100) userColor = '#d5ffd5'
+          else if (rows[0].messageCount < 200) userColor = '#aaffaa'
+          else if (rows[0].messageCount < 300) userColor = '#80ff80'
+          else if (rows[0].messageCount < 500) userColor = '#55ff55'
+          else if (rows[0].messageCount < 1000) userColor = '#2bff2b'
+          else if (rows[0].messageCount < 1500) userColor = '#00ff00'
+          else if (rows[0].messageCount < 2000) userColor = '#00d500'
+          else if (rows[0].messageCount < 3000) userColor = '#00aa00'
+          else if (rows[0].messageCount < 5000) userColor = '#008000'
+          else userColor = '#005500'
+
+          if (
+            !message.member.roles.cache.some((role) => role.name === '常連') &&
+            rows[0].messageCount >= 100
           )
+            message.member.roles.add(
+              message.guild.roles.cache.find((role) => role.name === '常連'),
+            )
+
+          con.query(
+            'UPDATE `users` SET `messageCount` = ? WHERE `userId` = ?',
+            [(rows[0].messageCount += 1), message.author.id],
+          )
+        }
+      },
+    )
+
+    if (message.member.roles.cache.some((role) => role.name === '運営'))
+      userName = `${userName}<:moderator:869939850638393374>`
+
+    if (
+      message.channel.type === 'GUILD_TEXT' &&
+      message.channel.parentId === '882520205706792982'
+    ) {
+      if (!message.content) {
+        return message
+          .reply('メッセージが取得できませんでした。\n再試行してください。')
+          .then((msg) => setTimeout(() => msg.delete(), 10000))
       }
-    }
-  )
 
-  const userData = db.query(
-    `SELECT * FROM users WHERE userId = ${message.author.id}`,
-    function (error, results, fields) {
-      if (!results[0])
-        db.query('INSERT INTO users SET ?', {
-          userId: message.author.id,
-          tag: tagGen(),
-        })
-      else {
-        userName = results[0].nickName
-        
-        
-      }
-    }
-  )
+      await message.delete()
 
-  // システムメッセージは無視 (ウェルカムメッセージなど)
-  if (message.system) return
-
-  // 発言数を1増やす
-  await userData
-    .updateOne({
-      count: (userData.count += 1),
-    })
-    .catch(() => {})
-
-  // 「運営」ロールがあれば :moderator: バッジをつける
-  if (message.member.roles.cache.some((role) => role.name === '運営'))
-    userName = `${userName}<:moderator:869939850638393374>`
-
-  // message.content がnullの場合はreturn (画像だけ送信など)
-  if (message.channel.id === '870263903785992213') {
-    if (!message.content) return message.reply('メッセージを送信してください。')
-
-    const userTag = userData ? userData.tag : 'Unkuown'
-    const thStartMsg = await message.guild.channels.cache
-      .get('870264227061989416')
-      .send({
+      const thStartMsg = await message.channel.send({
         embeds: [
           new MessageEmbed()
             .setTitle(`${userName}(${userTag})`)
@@ -134,260 +108,238 @@ client.on('messageCreate', async (message) => {
             .setColor(userColor),
         ],
       })
-    const createTh = await thStartMsg.channel.threads.create({
-      name: `${message.content}(${userTag})`,
-      autoArchiveDuration: 1440,
-      startMessage: thStartMsg,
-    })
+      const createTh = await message.channel.threads.create({
+        name: message.content,
+        autoArchiveDuration: 1440,
+        startMessage: thStartMsg,
+      })
 
-    await createTh.setRateLimitPerUser(3)
+      con.query('INSERT INTO `threads` (`threadId`, `ownerId`) VALUES (?, ?)', [
+        createTh.id,
+        message.author.id,
+      ])
 
-    const addMsg = await createTh.send('Loading...')
-    await addMsg.edit(`${message.author}<@&875986483260043284>`)
-    await addMsg.delete()
+      await createTh.setRateLimitPerUser(3)
 
-    message.reply(`${createTh} スレを立てました。`)
-  }
+      const addMsg = await createTh.send('Loading...')
+      await addMsg.edit(`${message.author}<@&875986483260043284>`)
+      await addMsg.delete()
+    }
 
-  // チャンネルがスレッドかつ #📚｜スレ一覧 配下の場合
-  if (
-    message.channel.type === 'GUILD_PUBLIC_THREAD' &&
-    message.channel.parentId === '870264227061989416'
-  ) {
-    let m_content = message.content
+    if (
+      message.channel.type === 'GUILD_PUBLIC_THREAD' &&
+      message.channel.parent.parentId === '882520205706792982'
+    ) {
+      function getThread() {
+        return new Promise((resolve) => {
+          con.query(
+            'SELECT * FROM `threads` WHERE `threadId` = ?',
+            [message.channelId],
+            (e, rows) => {
+              con.query(
+                'UPDATE `threads` SET `resNum` = ? WHERE `threadId` = ?',
+                [rows[0].resNum + 1, message.channelId],
+              )
 
-    // レス番号を計算
-    num = async () => {
-      try {
-        let n = await message.channel.messages.fetch().then(
-          (a) =>
-            Number(
-              a
-                .filter((a) => a.author.id === client.user.id && a.embeds[0])
-                .first()
-                .embeds[0].title.split(' ')[0]
-            ) + 1
-        )
-        return n
-      } catch {
-        return 1
+              resolve(rows[0])
+            },
+          )
+        })
+      }
+
+      const threadData = await getThread()
+
+      if (threadData.ownwerId === message.author.id)
+        userName = `${userName}<:nushi:869905929146085396>`
+
+      let sendContent = message.content
+
+      if (message.reference) {
+        const m = await message.channel.messages
+          .fetch({ limit: 100 })
+          .then((msgs) =>
+            msgs
+              .filter((msg) => msg.id === message.reference.messageId)
+              .first(),
+          )
+
+        sendContent = `[>>${m.embeds[0].title.split(' ')[0]}](${m.url})\n${
+          message.content
+        }`
+      }
+
+      const embed = new MessageEmbed()
+        .setTitle(`${threadData.resNum + 1} ${userName}(${userTag})`)
+        .setDescription(sendContent)
+        .setColor(userColor)
+
+      let notImage = false
+      if (message.attachments.first()) {
+        if (message.attachments.first().contentType.includes('image/'))
+          embed.setImage(message.attachments.first().proxyURL)
+        else notImage = true
+      }
+
+      await message.delete()
+      await message.channel
+        .send({
+          embeds: [embed],
+        })
+        .then((msg) => {
+          if (notImage)
+            msg.reply({
+              content: '添付ファイル',
+              files: [message.attachments.first()],
+            })
+        })
+
+      if (threadData.resNum + 1 >= 1000) {
+        message.channel
+          .send({
+            embeds: [
+              new MessageEmbed()
+                .setTitle('END')
+                .setDescription(
+                  'レス数が1000以上になったので書き込みを中止しました。\n新しいスレッドを立てて会話してください。',
+                )
+                .setColor('RED'),
+            ],
+          })
+          .then(() => {
+            message.channel.setLocked(true)
+            message.channel.setArchived(true)
+          })
       }
     }
+  })
+  .on('guildMemberAdd', (member) => {
+    client.channels.cache
+      .get('868688109003481148')
+      .send(
+        `**${member.guild.name}** に <@!${member.user.id}> が参加しました。宣伝したり、話したりしてくれると嬉しいです。`,
+      )
+  })
+  .on('guildMemberRemove', (member) => {
+    client.channels.cache
+      .get('868688109003481148')
+      .send(
+        `**${member.guild.name}** から **${member.user.tag}** が退出しました。`,
+      )
+  })
+  .on('interactionCreate', async (interaction) => {
+    if (!interaction.isCommand()) return
+    const { commandName } = interaction
 
-    // スレ主の場合 :nushi: バッジをつける
-    const userTag = userData ? userData.tag : 'None'
-    if (message.channel.name.slice(-6) === `${userTag})`)
-      userName = `${userName}<:nushi:869905929146085396>`
+    switch (commandName) {
+      case 'name': {
+        await interaction.deferReply({ ephemeral: true })
 
-    if (message.reference) {
-      let m = await message.channel.messages
-        .fetch({ limit: 100 })
-        .then((msgs) =>
-          msgs.filter((msg) => msg.id === message.reference.messageId).first()
-        )
-
-      m_content = `[>>${m.embeds[0].title.split(' ')[0]}](${m.url})\n${
-        message.content
-      }`
-    }
-
-    const embed = new MessageEmbed()
-      .setTitle(`${await num()} ${userName}(${userData.tag})`)
-      .setDescription(m_content)
-      .setColor(userColor)
-
-    let notImage = false
-    if (message.attachments.first()) {
-      if (message.attachments.first().contentType.includes('image/'))
-        embed.setImage(message.attachments.first().proxyURL)
-      else notImage = true
-    }
-
-    await message.delete()
-    message.channel
-      .send({
-        embeds: [embed],
-      })
-      .then((msg) => {
-        if (notImage)
-          msg.reply({
-            content: '添付ファイル',
-            files: [message.attachments.first()],
-          })
-      })
-
-    // 1000レスに到達した時
-    if ((await num()) >= 1000) {
-      message.channel
-        .send({
-          embeds: [
-            new MessageEmbed()
-              .setTitle('END')
-              .setDescription(
-                'レス数が1000以上になったので書き込みを中止しました。\n新しいスレッドを立てて会話してください。'
+        con.query(
+          'SELECT * FROM `users` WHERE `userId` = ?',
+          [interaction.user.id],
+          async (e, rows) => {
+            if (!rows[0]) {
+              con.query(
+                'INSERT INTO `users` (`userId`, `nickName`, `tag`) VALUES (?, ?, ?)',
+                [
+                  interaction.user.id,
+                  interaction.options.getString('name'),
+                  tagGen(),
+                ],
               )
-              .setColor('RED'),
+            } else {
+              con.query('UPDATE `users` SET `nick` = ? WHERE `userId` = ?', [
+                interaction.options.getString('name'),
+                interaction.user.id,
+              ])
+            }
+            await interaction.editReply(
+              `ニックネームを \`${interaction.options.getString(
+                'name',
+              )}\` に変更しました。`,
+            )
+          },
+        )
+        break
+      }
+      case 'message_count': {
+        await interaction.deferReply({ ephemeral: true })
+
+        con.query(
+          'SELECT * FROM `users` WHERE `userId` = ?',
+          [interaction.user.id],
+          async (e, rows) => {
+            let count
+
+            if (!rows[0]) count = 0
+            else count = rows[0].messageCount
+
+            await interaction.editReply(
+              `あなたは、これまで \`${count}メッセージ\` 送信しています。`,
+            )
+          },
+        )
+        break
+      }
+      case 'reset': {
+        await interaction.reply({
+          embeds: [
+            new MessageEmbed().setTitle(
+              String(interaction.options.get('num').value),
+            ),
           ],
         })
-        .then(() => {
-          message.channel.setLocked(true)
-          message.channel.setArchived(true)
-        })
-    }
-  }
-
-  if (
-    message.channel.type === 'GUILD_TEXT' &&
-    message.channel.id === '870264227061989416'
-  ) {
-    const msg = await message.reply(
-      'スレを立てる場合は、<#870263903785992213> にスレタイトルを送信してください。'
-    )
-    setTimeout(() => {
-      msg.delete()
-      message.delete().catch(() => {})
-    }, 10000)
-  }
-})
-
-// メンバー参加時に発火するイベント
-client.on('guildMemberAdd', (member) => {
-  client.channels.cache
-    .get('868688109003481148')
-    .send(
-      `**${member.guild.name}** に <@!${member.user.id}> が参加しました。宣伝したり、話したりしてくれると嬉しいです。`
-    )
-})
-
-// メンバー退出時に発火するイベント
-client.on('guildMemberRemove', (member) => {
-  client.channels.cache
-    .get('868688109003481148')
-    .send(
-      `**${member.guild.name}** から **${member.user.tag}** が退出しました。`
-    )
-})
-
-// Slash commandsのリスト
-const commands = {
-  async name(interaction) {
-    await interaction.deferReply({ ephemeral: true })
-
-    const userData = await userSchema.findOne(
-      {
-        id: interaction.member.id,
-      },
-      (e, user) => {
-        if (!user)
-          userSchema.create({
-            id: interaction.member.id,
-            nick: interaction.options.get('name').value,
-            tag: tagGen(),
-          })
+        break
       }
-    )
-    await userData
-      .updateOne({
-        nick: interaction.options.get('name').value,
-      })
-      .catch(() => {})
-    interaction.editReply({
-      content: `ニックネームを **${
-        interaction.options.get('name').value
-      }** に変更しました。`,
-      ephemeral: true,
-    })
-    return
-  },
-  async message_count(interaction) {
-    await interaction.deferReply({ ephemeral: true })
+      case 'tag_search': {
+        await interaction.deferReply({ ephemeral: true })
 
-    await userSchema.findOne(
-      {
-        id: interaction.member.id,
-      },
-      (e, user) => {
-        return interaction.editReply({
-          content: `あなたは、これまで **${user.count}メッセージ** 送信しています。`,
+        con.query(
+          'SELECT * FROM `users` WHERE `tag` = ?',
+          [interaction.options.getString('tag')],
+          async (e, rows) => {
+            if (!rows[0])
+              await interaction.editReply('ユーザーが存在しません。')
+            else
+              await interaction.editReply(
+                `<@!${rows[0].userId}> (\`${rows[0].userId}\`)\nnickName: \`${rows[0].nickName}\`\ntag: \`${rows[0].tag}\`\nmessageCount: \`${rows[0].messageCount}\``,
+              )
+          },
+        )
+        break
+      }
+      case 'ranking': {
+        await interaction.reply({
+          content: '現在、ランキング機能を一時的に停止しています。',
           ephemeral: true,
         })
+        break
       }
-    )
-  },
-  async reset(interaction) {
-    return await interaction.reply({
-      embeds: [
-        new MessageEmbed().setTitle(
-          String(interaction.options.get('num').value)
-        ),
-      ],
-    })
-  },
-  async tag_search(interaction) {
-    await interaction.deferReply({ ephemeral: true })
+      case 'status': {
+        await interaction.deferReply({ ephemeral: true })
 
-    await userSchema.findOne(
-      {
-        tag: interaction.options.get('tag').value,
-      },
-      (e, user) => {
-        if (!user)
-          return interaction.editReply({
-            content: 'ユーザーが存在しません。',
-            ephemeral: true,
-          })
-        else
-          return interaction.editReply({
-            content: `<@!${user.id}> (**${user.id}**)\nNick: **${user.nick}**\nTag: **${user.tag}**\nCount: **${user.count}**`,
-            ephemeral: true,
-          })
+        let rss = process.memoryUsage().rss
+        if (rss instanceof Array) {
+          rss = rss.reduce((sum, val) => sum + val, 0)
+        }
+        let heapUsed = process.memoryUsage().heapUsed
+        if (heapUsed instanceof Array) {
+          heapUsed = heapUsed.reduce((sum, val) => sum + val, 0)
+        }
+        const { totalMemMb } = await mem.info()
+
+        interaction.editReply(
+          `\`\`\`\nPing: ${Math.round(client.ws.ping)}ms\nNode.js: v${
+            process.versions.node
+          }\ndiscord.js: v${djsversion}\nOS: ${await os.oos()}\nCPU: ${cpu.model()}\n├ コア数: ${cpu.count()}\n└ 使用率: ${await cpu.usage()}%\nメモリ: ${totalMemMb}MB\n└ 使用量: ${(
+            heapUsed /
+            1024 /
+            1024
+          ).toFixed(2)}MB\n\`\`\``,
+        )
+        break
       }
-    )
-  },
-  async ranking(interaction) {
-    await interaction.deferReply({ ephemeral: true })
-
-    let rankData = await userSchema.find().sort({ count: -1 }).exec()
-    rankData = rankData
-      .slice(0, 7)
-      .map((rd, i) => `**\`${i + 1}.\`** \`${rd.count}\` ${rd.nick}(${rd.tag})`)
-      .join('\n')
-
-    return interaction.editReply(rankData)
-  },
-  async status(interaction) {
-    await interaction.deferReply({ ephemeral: true })
-
-    let rss = process.memoryUsage().rss
-    if (rss instanceof Array) {
-      rss = rss.reduce((sum, val) => sum + val, 0)
     }
-    let heapUsed = process.memoryUsage().heapUsed
-    if (heapUsed instanceof Array) {
-      heapUsed = heapUsed.reduce((sum, val) => sum + val, 0)
-    }
+  })
 
-    const { totalMemMb, usedMemMb } = await mem.info()
-
-    return interaction.editReply(
-      `\`\`\`\nPing: ${Math.round(client.ws.ping)}ms\nNode.js: v${
-        process.versions.node
-      }\ndiscord.js: v${djsversion}\nOS: ${await os.oos()}\nCPU: ${cpu.model()}\n├ コア数: ${cpu.count()}\n└ 使用率: ${await cpu.usage()}%\nメモリ: ${totalMemMb}MB\n└ 使用量: ${(
-        heapUsed /
-        1024 /
-        1024
-      ).toFixed(2)}MB\n\`\`\``
-    )
-  },
-}
-
-async function onInteraction(interaction) {
-  if (!interaction.isCommand()) return
-  return commands[interaction.commandName](interaction)
-}
-
-// インタラクション発生時に発火するイベント
-client.on('interactionCreate', (interaction) => onInteraction(interaction))
-
-// TOKENでBotにログイン
 client.login(process.env.DISCORD_TOKEN)
