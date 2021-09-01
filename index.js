@@ -13,6 +13,7 @@ const client = new Client({
 })
 const mongoose = require('mongoose')
 const { mem, cpu, os } = require('node-os-utils')
+const mysql = require('mysql')
 
 // 識別タグの作成
 const tagGen = () => {
@@ -33,49 +34,21 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 const userSchema = require('./models/user.js')
 
-// Bot起動時に発火するイベント
-client.once('ready', async () => {
-  console.log(`${client.user.tag} でログインしました`)
+const db = mysql.createConnection({
+  host: process.env.MYSQL_HOST,
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASS,
+  database: process.env.MYSQL_NAME,
+})
 
-  setInterval(() => {
-    client.user.setActivity(`Prefix: / | Ping: ${client.ws.ping}ms`)
-  }, 20000)
+// Bot起動時に発火するイベント
+client.once('ready', () => {
+  console.log(`${client.user.tag} でログインしました。`)
 })
 
 // メッセージ送信時に発火するイベント
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return
-
-  if (message.content.startsWith('2ch!')) {
-    const args = message.content.slice(4).trim().split(/ +/)
-    const command = args.shift().toLowerCase()
-
-    if (command === 'eval') {
-      if (message.author.id !== '723052392911863858') return
-
-      try {
-        const { inspect } = require('util')
-        const evaled = await eval(args.join(' '))
-        message.reply({
-          embeds: [
-            new MessageEmbed()
-              .setTitle('出力')
-              .setDescription(`\`\`\`js\n${inspect(evaled)}\n\`\`\``)
-              .setColor('BLURPLE'),
-          ],
-        })
-      } catch (e) {
-        message.reply({
-          embeds: [
-            new MessageEmbed()
-              .setTitle('エラー')
-              .setDescription(`\`\`\`js\n${e}\n\`\`\``)
-              .setColor('RED'),
-          ],
-        })
-      }
-    }
-  }
 
   let userName = '名無しさん'
   let userColor = '#ffffff'
@@ -112,6 +85,22 @@ client.on('messageCreate', async (message) => {
           message.member.roles.add(
             message.guild.roles.cache.find((role) => role.name === '常連')
           )
+      }
+    }
+  )
+
+  const userData = db.query(
+    `SELECT * FROM users WHERE userId = ${message.author.id}`,
+    function (error, results, fields) {
+      if (!results[0])
+        db.query('INSERT INTO users SET ?', {
+          userId: message.author.id,
+          tag: tagGen(),
+        })
+      else {
+        userName = results[0].nickName
+        
+        
       }
     }
   )
@@ -220,12 +209,11 @@ client.on('messageCreate', async (message) => {
         embeds: [embed],
       })
       .then((msg) => {
-        if (notImage) {
+        if (notImage)
           msg.reply({
             content: '添付ファイル',
             files: [message.attachments.first()],
           })
-        }
       })
 
     // 1000レスに到達した時
@@ -259,64 +247,6 @@ client.on('messageCreate', async (message) => {
       msg.delete()
       message.delete().catch(() => {})
     }, 10000)
-  }
-
-  if (!message.channel.parent) return
-
-  if (
-    message.channel.parent.id === '868392026813644871' ||
-    message.channel.parent.id === '868694406876790804'
-  ) {
-    num = async () => {
-      try {
-        let n = await message.channel.messages.fetch().then(
-          (a) =>
-            Number(
-              a
-                .filter((a) => a.author.id === client.user.id)
-                .first()
-                .embeds[0].title.split(' ')[0]
-            ) + 1
-        )
-        return n
-      } catch {
-        return 1
-      }
-    }
-
-    if ((await num()) >= 1000) {
-      message.channel.send({
-        embeds: [
-          new MessageEmbed()
-            .setTitle('END')
-            .setDescription(
-              'レス数が1000以上になったので書き込みを中止しました。\n新しいスレッドを立てて会話してください。'
-            )
-            .setColor('RED'),
-        ],
-      })
-      return message.channel.setParent('868694406876790804')
-    }
-
-    const userTag = userData ? userData.tag : 'None'
-    if (userTag === message.channel.topic)
-      userName = `${userName}<:nushi:869905929146085396>`
-
-    await message.delete()
-    message.channel.send({
-      embeds: [
-        new MessageEmbed()
-          .setTitle(`${await num()} ${userName}(${userTag})`)
-          .setDescription(message.content)
-          .setImage(
-            message.attachments.first()
-              ? message.attachments.first().proxyURL
-              : null
-          )
-          .setColor(userColor),
-      ],
-    })
-    message.channel.setPosition(1)
   }
 })
 
@@ -451,47 +381,9 @@ const commands = {
   },
 }
 
-// Buttonsのリスト
-const buttons = {
-  async sudo(interaction) {
-    await interaction.deferReply()
-
-    if (
-      interaction.member.roles.cache.some((role) => role.name === '管理者権限')
-    ) {
-      interaction.member.roles.remove(
-        interaction.member.guild.roles.cache.find(
-          (role) => role.name === '管理者権限'
-        )
-      )
-
-      return interaction.editReply({
-        content:
-          '管理者権限を外しました。\nボタンを再度押すと、管理者権限を取得することができます。',
-        ephemeral: true,
-      })
-    } else {
-      interaction.member.roles.add(
-        interaction.member.guild.roles.cache.find(
-          (role) => role.name === '管理者権限'
-        )
-      )
-
-      return interaction.editReply({
-        content:
-          '管理者権限を付与しました。\nボタンを再度押すと、管理者権限を外すことができます。',
-        ephemeral: true,
-      })
-    }
-  },
-}
-
 async function onInteraction(interaction) {
-  // Buttons
-  if (interaction.isButton()) return buttons[interaction.customId](interaction)
-  // Slash commands
-  else if (interaction.isCommand())
-    return commands[interaction.commandName](interaction)
+  if (!interaction.isCommand()) return
+  return commands[interaction.commandName](interaction)
 }
 
 // インタラクション発生時に発火するイベント
