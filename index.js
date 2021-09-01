@@ -149,7 +149,7 @@ client
 
       const threadData = await getThread()
 
-      if (threadData.ownwerId === message.author.id)
+      if (threadData.ownerId === message.author.id)
         userName = `${userName}<:nushi:869905929146085396>`
 
       let sendContent = message.content
