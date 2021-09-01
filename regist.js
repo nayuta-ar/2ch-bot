@@ -4,7 +4,7 @@ const botToken = process.env.DISCORD_TOKEN
 const commandData = {
   name: 'status',
   description: 'システムステータスを表示します。',
-  //default_permission: true,
+  // default_permission: true,
   options: [],
 }
 

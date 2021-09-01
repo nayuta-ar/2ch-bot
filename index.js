@@ -46,7 +46,7 @@ client
       'SELECT * FROM `users` WHERE `userId` = ?',
       [message.author.id],
       (e, rows) => {
-        if (!rows) {
+        if (!rows[0]) {
           con.query('INSERT INTO `users` (`userId`, `tag`) VALUES (?, ?)', [
             message.author.id,
             tagGen(),
@@ -149,6 +149,9 @@ client
 
       const threadData = await getThread()
 
+      if (threadData.defaultName && userName === '名無しさん')
+        userName = threadData.defaultName
+
       if (threadData.ownerId === message.author.id)
         userName = `${userName}<:nushi:869905929146085396>`
 
@@ -212,7 +215,7 @@ client
       }
     }
   })
-  .on('guildMemberAdd', (member) => {
+  /* .on('guildMemberAdd', (member) => {
     client.channels.cache
       .get('868688109003481148')
       .send(
@@ -225,7 +228,7 @@ client
       .send(
         `**${member.guild.name}** から **${member.user.tag}** が退出しました。`,
       )
-  })
+  }) */
   .on('interactionCreate', async (interaction) => {
     if (!interaction.isCommand()) return
     const { commandName } = interaction
