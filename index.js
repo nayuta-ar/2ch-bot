@@ -90,7 +90,7 @@ client
 
     if (
       message.channel.type === 'GUILD_TEXT' &&
-      message.channel.parentId === '882520205706792982'
+      message.channel.parentId === '876368038528700436'
     ) {
       if (!message.content) {
         return message
@@ -128,7 +128,7 @@ client
 
     if (
       message.channel.type === 'GUILD_PUBLIC_THREAD' &&
-      message.channel.parent.parentId === '882520205706792982'
+      message.channel.parent.parentId === '876368038528700436'
     ) {
       function getThread() {
         return new Promise((resolve) => {
@@ -215,7 +215,7 @@ client
       }
     }
   })
-  /* .on('guildMemberAdd', (member) => {
+  .on('guildMemberAdd', (member) => {
     client.channels.cache
       .get('868688109003481148')
       .send(
@@ -228,7 +228,7 @@ client
       .send(
         `**${member.guild.name}** から **${member.user.tag}** が退出しました。`,
       )
-  }) */
+  })
   .on('interactionCreate', async (interaction) => {
     if (!interaction.isCommand()) return
     const { commandName } = interaction
