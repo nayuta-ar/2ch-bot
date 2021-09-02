@@ -112,7 +112,7 @@ client
       const thStartMsg = await message.channel.send({
         embeds: [
           new MessageEmbed()
-            .setAuthor(`${userData.nickName}(${userData.tag})`)
+            .setTitle(`${userData.nickName}(${userData.tag})`)
             .setDescription(message.content)
             .setColor(userColor),
         ],
@@ -180,13 +180,13 @@ client
               .first(),
           )
 
-        sendContent = `[>>${m.embeds[0].author.name.split(' ')[0]}](${m.url})\n${
+        sendContent = `[>>${m.embeds[0].title.split(' ')[0]}](${m.url})\n${
           message.content
         }`
       }
 
       const embed = new MessageEmbed()
-        .setAuthor(
+        .setTitle(
           `${threadData.resNum + 1} ${userData.nickName}(${userData.tag})`,
         )
         .setDescription(sendContent)
@@ -217,7 +217,7 @@ client
           .send({
             embeds: [
               new MessageEmbed()
-                .setAuthor('END')
+                .setTitle('END')
                 .setDescription(
                   'レス数が1000以上になったので書き込みを中止しました。\n新しいスレッドを立てて会話してください。',
                 )
