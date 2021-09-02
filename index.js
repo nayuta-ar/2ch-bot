@@ -249,9 +249,7 @@ client
     if (!interaction.isCommand()) return
     await interaction.deferReply({ ephemeral: true })
 
-    const { commandName } = interaction
-
-    switch (commandName) {
+    switch (interaction.commandName) {
       case 'name': {
         con.query(
           'SELECT * FROM `users` WHERE `userId` = ?',
