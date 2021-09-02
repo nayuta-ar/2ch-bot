@@ -247,12 +247,12 @@ client
   })
   .on('interactionCreate', async (interaction) => {
     if (!interaction.isCommand()) return
+    await interaction.deferReply({ ephemeral: true })
+
     const { commandName } = interaction
 
     switch (commandName) {
       case 'name': {
-        await interaction.deferReply({ ephemeral: true })
-
         con.query(
           'SELECT * FROM `users` WHERE `userId` = ?',
           [interaction.user.id],
@@ -282,8 +282,6 @@ client
         break
       }
       case 'message_count': {
-        await interaction.deferReply({ ephemeral: true })
-
         con.query(
           'SELECT * FROM `users` WHERE `userId` = ?',
           [interaction.user.id],
@@ -301,8 +299,6 @@ client
         break
       }
       case 'tag_search': {
-        await interaction.deferReply({ ephemeral: true })
-
         con.query(
           'SELECT * FROM `users` WHERE `tag` = ?',
           [interaction.options.getString('tag')],
@@ -318,8 +314,6 @@ client
         break
       }
       case 'ranking': {
-        await interaction.deferReply({ ephemeral: true })
-
         con.query(
           'SELECT * FROM `users` ORDER BY `messageCount` DESC LIMIT 7',
           async (e, rows) => {
@@ -338,8 +332,6 @@ client
         break
       }
       case 'status': {
-        await interaction.deferReply({ ephemeral: true })
-
         let rss = process.memoryUsage().rss
         if (rss instanceof Array) {
           rss = rss.reduce((sum, val) => sum + val, 0)
@@ -358,6 +350,26 @@ client
             1024 /
             1024
           ).toFixed(2)}MB\n\`\`\``,
+        )
+        break
+      }
+      case 'default_name': {
+        con.query(
+          'SELECT * FROM `threads` WHERE `threadId` = ?',
+          [interaction.channelId],
+          async (e, rows) => {
+            if (!rows[0] || rows[0].ownerId !== interaction.user.id)
+              await interaction.editReply(
+                'このコマンドはスレ主のみ実行できます。',
+              )
+            else {
+              con.query(
+                'UPDATE `threads` SET `defaultName` = ? WHERE `threadId` = ?',
+                [interaction.options.getString('name'), interaction.channelId],
+              )
+              await interaction.editReply('デフォルトハンドルを設定しました。')
+            }
+          },
         )
         break
       }
