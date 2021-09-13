@@ -158,7 +158,7 @@ client.on('messageCreate', async (message) => {
       'INSERT INTO `threads` (`threadId`, `ownerId`) VALUES (?, ?)',
       [createTh.id, message.author.id],
       async (e) => {
-        const msg = await message.reply(
+        const msg = await message.channel.send(
           'エラーが発生しました。\nシステム管理者に連絡してください。',
         )
         return setTimeout(() => msg.delete(), 10000)
@@ -206,15 +206,24 @@ client.on('messageCreate', async (message) => {
     let sendContent = message.content
 
     if (message.reference) {
-      con.query(
-        'SELECT * FROM `messages` WHERE `resId` = ?',
-        [message.reference.messageId],
-        (e, rows) => {
-          if (!rows[0]) return
+      const getRef = () => {
+        return new Promise((resolve) => {
+          con.query(
+            'SELECT * FROM `messages` WHERE `resId` = ?',
+            [message.reference.messageId],
+            (e, rows) => {
+              console.log(rows)
+              if (!rows[0]) return
 
-          sendContent = `[>>${rows[0].resNum}](https://discord.com/channels/868392026813644870/${rows[0].threadId}/${rows[0].resId}\n${message.content}`
-        },
-      )
+              resolve(
+                `[>>${rows[0].resNum}](https://discord.com/channels/868392026813644870/${rows[0].threadId}/${rows[0].resId})\n${sendContent}`,
+              )
+            },
+          )
+        })
+      }
+
+      sendContent = await getRef()
     }
 
     const embed = new MessageEmbed()

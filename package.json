@@ -1,7 +1,7 @@
 {
   "scripts": {
     "start": "node index.js",
-    "format": "npx eslint --fix --ext .js --ignore-path .gitignore ."
+    "lint": "npx eslint --fix --ext .js --ignore-path .gitignore ."
   },
   "dependencies": {
     "crypto": "^1.0.1",
