@@ -212,7 +212,6 @@ client.on('messageCreate', async (message) => {
             'SELECT * FROM `messages` WHERE `resId` = ?',
             [message.reference.messageId],
             (e, rows) => {
-              console.log(rows)
               if (!rows[0]) return
 
               resolve(
