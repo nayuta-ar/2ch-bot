@@ -212,11 +212,13 @@ client.on('messageCreate', async (message) => {
             'SELECT * FROM `messages` WHERE `resId` = ?',
             [message.reference.messageId],
             (e, rows) => {
-              if (!rows[0]) return
-
-              resolve(
-                `[>>${rows[0].resNum}](https://discord.com/channels/868392026813644870/${rows[0].threadId}/${rows[0].resId})\n${sendContent}`,
-              )
+              if (!rows[0]) {
+                resolve(sendContent)
+              } else {
+                resolve(
+                  `[>>${rows[0].resNum}](https://discord.com/channels/868392026813644870/${rows[0].threadId}/${rows[0].resId})\n${sendContent}`,
+                )
+              }
             },
           )
         })
