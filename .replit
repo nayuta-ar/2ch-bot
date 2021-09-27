@@ -1,2 +1,2 @@
-run = "npm start"
-language = "nix"
+run = "npx node shard"
+language = "nodejs"

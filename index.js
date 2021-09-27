@@ -27,7 +27,7 @@ const tagGen = () => {
   con.query('SELECT * FROM `users` WHERE `tag` = ?', [resTag], (e, rows) => {
     if (e) return
 
-    if (rows[0]) {
+    if (rows.length < 1) {
       tagGen()
     } else {
       return resTag
@@ -60,9 +60,9 @@ cron.schedule('0 0 * * *', () => {
         'SELECT * FROM `users` WHERE `userId` = ? and `messageCount` > 100',
         [member.id],
         (e, rows) => {
-          if (e || !rows[0]) return
+          if (e || !rows.length < 1) return
 
-          if (rows[0]) {
+          if (rows.length < 1) {
             member.roles.add('870901469279318067')
           }
         },
@@ -212,7 +212,7 @@ client.on('messageCreate', async (message) => {
             'SELECT * FROM `messages` WHERE `resId` = ?',
             [message.reference.messageId],
             (e, rows) => {
-              if (!rows[0]) {
+              if (!rows.length < 1) {
                 resolve(sendContent)
               } else {
                 resolve(
@@ -226,6 +226,7 @@ client.on('messageCreate', async (message) => {
 
       sendContent = await getRef()
     }
+    const moment = require('moment-timezone')
 
     const embed = new MessageEmbed()
       .setTitle(
@@ -233,6 +234,11 @@ client.on('messageCreate', async (message) => {
       )
       .setDescription(sendContent)
       .setColor(userColor)
+      .setFooter(
+        moment(message.createdAt)
+          .tz('Asia/Tokyo')
+          .format('YYYY/MM/DD HH:mm:ss'),
+      )
 
     let notImage = false
     if (message.attachments.first()) {
@@ -288,6 +294,8 @@ client.on('messageCreate', async (message) => {
 })
 
 client.on('guildMemberAdd', (member) => {
+  if (member.user.bot) return
+  member.setNickname("名無しさん")
   client.channels.cache
     .get('868688109003481148')
     .send(
@@ -316,7 +324,7 @@ client.on('interactionCreate', async (interaction) => {
         'SELECT * FROM `users` WHERE `userId` = ?',
         [interaction.user.id],
         async (e, rows) => {
-          if (!rows[0]) {
+          if (!rows.length < 1) {
             con.query(
               'INSERT INTO `users` (`userId`, `nickName`, `tag`) VALUES (?, ?, ?)',
               [
@@ -362,7 +370,8 @@ client.on('interactionCreate', async (interaction) => {
         'SELECT * FROM `users` WHERE `tag` = ?',
         [interaction.options.getString('tag')],
         async (e, rows) => {
-          if (!rows[0]) await interaction.editReply('ユーザーが存在しません。')
+          if (!rows.length < 1)
+            await interaction.editReply('ユーザーが存在しません。')
           else
             await interaction.editReply(
               `<@!${rows[0].userId}> (\`${rows[0].userId}\`)\nnickName: \`${rows[0].nickName}\`\ntag: \`${rows[0].tag}\`\nmessageCount: \`${rows[0].messageCount}\``,
@@ -416,7 +425,7 @@ client.on('interactionCreate', async (interaction) => {
         'SELECT * FROM `threads` WHERE `threadId` = ?',
         [interaction.channelId],
         async (e, rows) => {
-          if (!rows[0] || rows[0].ownerId !== interaction.user.id) {
+          if (!rows.length < 1 || rows[0].ownerId !== interaction.user.id) {
             await interaction.editReply(
               'このコマンドはスレ主のみ実行できます。',
             )
