@@ -9,20 +9,26 @@ require('dotenv').config()
 
 const {
   Client,
-  Intents,
   MessageEmbed,
+  Intents,
   version: djsversion,
 } = require('discord.js')
 const client = new Client({
-  intents: [
-    Intents.FLAGS.GUILDS,
-    Intents.FLAGS.GUILD_MESSAGES,
-    Intents.FLAGS.GUILD_MEMBERS,
-  ],
+  intents:
+    Intents.FLAGS.GUILDS |
+    Intents.FLAGS.GUILD_MESSAGES |
+    Intents.FLAGS.GUILD_MEMBERS |
+    Intents.FLAGS.GUILD_PRESENCES |
+    Intents.FLAGS.GUILD_INVITES |
+    Intents.FLAGS.GUILD_VOICE_STATES |
+    Intents.FLAGS.GUILD_EMOJIS |
+    Intents.FLAGS.GUILD_INTEGRATIONS |
+    Intents.FLAGS.GUILD_WEBHOOKS |
+    Intents.FLAGS.GUILD_MESSAGE_REACTIONS |
+    Intents.FLAGS.GUILD_MESSAGE_TYPING,
 })
 const { mem, cpu, os } = require('node-os-utils')
 const { createConnection } = require('mysql')
-const cron = require('node-cron')
 
 const tagGen = () => {
   const crypto = require('crypto')
@@ -56,30 +62,31 @@ process.on('uncaughtException', (error) => {
   console.log(error)
 })
 
-cron.schedule('0 0 * * *', () => {
-  client.guilds.cache
-    .get('868392026813644870')
-    .members.cache.filter(
-      (member) => !member.roles.cache.has('870901469279318067'),
-    )
-    .map((member) => member)
-    .forEach((member) => {
-      con.query(
-        'SELECT * FROM `users` WHERE `userId` = ? and `messageCount` > 100',
-        [member.id],
-        (e, rows) => {
-          if (e || !rows.length < 1) return
-
-          if (rows.length < 1) {
-            member.roles.add('870901469279318067')
-          }
-        },
-      )
-    })
-})
-
 client.once('ready', () => {
   console.log(`${client.user.tag} でログインしました。`)
+
+  const members = client.guilds.cache
+    .get('868392026813644870')
+    .members.cache.filter((member) => !member.user.bot)
+    .map((member) => member)
+
+  for (const member of members.filter(
+    (member) => !member.roles.cache.has('870901469279318067'),
+  )) {
+    con.query(
+      'SELECT * FROM `users` WHERE `userId` = ?',
+      [member.id],
+      (e, rows) => {
+        if (rows[0] && rows[0].messageCount >= 100) {
+          member.roles.add('870901469279318067')
+        }
+      },
+    )
+  }
+
+  for (const member of members) {
+    member.setNickname('名無しさん').catch(() => {})
+  }
 })
 
 client.on('messageCreate', async (message) => {
