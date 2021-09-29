@@ -1,3 +1,10 @@
+require('http')
+  .createServer(function (req, res) {
+    res.write('ok')
+    res.end()
+  })
+  .listen(process.env.PORT || 8080)
+
 require('dotenv').config()
 
 const {
@@ -28,7 +35,7 @@ const tagGen = () => {
     if (e) return
 
     if (rows.length < 1) {
-      tagGen()
+      return tagGen()
     } else {
       return resTag
     }
@@ -295,7 +302,7 @@ client.on('messageCreate', async (message) => {
 
 client.on('guildMemberAdd', (member) => {
   if (member.user.bot) return
-  member.setNickname("名無しさん")
+  member.setNickname('名無しさん')
   client.channels.cache
     .get('868688109003481148')
     .send(
