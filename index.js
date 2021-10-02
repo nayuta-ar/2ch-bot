@@ -227,7 +227,7 @@ client.on('messageCreate', async (message) => {
             'SELECT * FROM `messages` WHERE `resId` = ?',
             [message.reference.messageId],
             (e, rows) => {
-              if (!rows.length < 1) {
+              if (!rows[0]) {
                 resolve(sendContent)
               } else {
                 resolve(
