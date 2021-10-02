@@ -339,7 +339,7 @@ client.on('interactionCreate', async (interaction) => {
         'SELECT * FROM `users` WHERE `userId` = ?',
         [interaction.user.id],
         async (e, rows) => {
-          if (!rows.length < 1) {
+          if (!rows[0]) {
             con.query(
               'INSERT INTO `users` (`userId`, `nickName`, `tag`) VALUES (?, ?, ?)',
               [
