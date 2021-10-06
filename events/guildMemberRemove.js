@@ -1,5 +1,5 @@
 module.exports = {
-  name: 'guildMemberAdd',
+  name: 'guildMemberRemove',
   async execute(member) {
     if (member.user.bot) return
 
