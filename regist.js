@@ -1,33 +1,33 @@
-const apiEndpoint =
-  'https://discord.com/api/v8/applications/868482542255349801/guilds/868392026813644870/commands'
-const botToken = process.env.DISCORD_TOKEN
-const commandData = {
-  name: 'default_name',
-  description: '【スレ主用】スレのデフォルトハンドルを変更します。',
-  // default_permission: true,
-  options: [
-    {
-      name: 'name',
-      description: '設定するハンドルを入力',
-      type: 3,
-      required: true,
-    },
-  ],
+require('dotenv').config()
+
+const fs = require('fs')
+const { REST } = require('@discordjs/rest')
+const { Routes } = require('discord-api-types/v9')
+const clientId = '895231482828840980'
+
+const commands = []
+const commandFiles = fs
+  .readdirSync('./commands')
+  .filter((file) => file.endsWith('.js'))
+
+for (const file of commandFiles) {
+  const command = require(`./commands/${file}`)
+  commands.push(command.data.toJSON())
 }
 
-async function main() {
-  const fetch = require('node-fetch')
+const rest = new REST({ version: '9' }).setToken(process.env.DISCORD_TOKEN)
 
-  const response = await fetch(apiEndpoint, {
-    method: 'post',
-    body: JSON.stringify(commandData),
-    headers: {
-      Authorization: 'Bot ' + botToken,
-      'Content-Type': 'application/json',
-    },
-  })
-  const json = await response.json()
+;(async () => {
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(clientId, '882520205706792981'),
+      {
+        body: commands,
+      },
+    )
 
-  console.log(json)
-}
-main()
+    console.log('コマンドを登録しました。')
+  } catch (error) {
+    console.error(error)
+  }
+})()
