@@ -79,19 +79,13 @@ module.exports = {
       })
       const createTh = await message.channel.threads.create({
         name: message.content,
-        autoArchiveDuration: 1440,
+        autoArchiveDuration: 4320,
         startMessage: thStartMsg,
       })
 
       message.client.db.query(
         'INSERT INTO `threads` (`threadId`, `ownerId`) VALUES (?, ?)',
         [createTh.id, message.author.id],
-        async (e) => {
-          const msg = await message.channel.send(
-            'エラーが発生しました。\nシステム管理者に連絡してください。',
-          )
-          return setTimeout(() => msg.delete(), 10000)
-        },
       )
 
       await createTh.setRateLimitPerUser(3)
