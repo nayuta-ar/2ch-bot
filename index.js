@@ -1,6 +1,6 @@
 require('http')
   .createServer(function (req, res) {
-    res.write('ok')
+    res.write('It works!')
     res.end()
   })
   .listen(process.env.PORT || 8080)

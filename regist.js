@@ -3,7 +3,7 @@ require('dotenv').config()
 const fs = require('fs')
 const { REST } = require('@discordjs/rest')
 const { Routes } = require('discord-api-types/v9')
-const clientId = '895231482828840980'
+const clientId = '868482542255349801'
 
 const commands = []
 const commandFiles = fs
@@ -20,7 +20,7 @@ const rest = new REST({ version: '9' }).setToken(process.env.DISCORD_TOKEN)
 ;(async () => {
   try {
     await rest.put(
-      Routes.applicationGuildCommands(clientId, '882520205706792981'),
+      Routes.applicationGuildCommands(clientId, '868392026813644870'),
       {
         body: commands,
       },
