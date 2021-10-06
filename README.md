@@ -7,11 +7,15 @@ Discord で 2 ちゃんねる風の会話が楽しめる Bot です。
 `.env` に以下のものを書き込みます
 
 - `DISCORD_TOKEN`: Discord Bot の TOKEN
-- `MONGODB_URI`: MongoDB の URI
+- `MYSQL_HOST`: MySQL のホスト
+- `MYSQL_USER`: MySQL のユーザー名
+- `MYSQL_PASS`: MySQL のパスワード
+- `MYSQL_DB`: MySQL のデータベース名
 
-index.js のチャンネル ID とカテゴリ ID を好みのものに設定します
+各種ファイルのチャンネル ID とカテゴリ ID を好みのものに設定します
 
 ## インストール, 起動
 
 1. `npm install`
-1. `npm start`
+2. `npm run regist`
+3. `npm start`
