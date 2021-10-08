@@ -99,7 +99,7 @@ module.exports = {
       message.channel.type === 'GUILD_PUBLIC_THREAD' &&
       message.channel.parent.parentId === '876368038528700436'
     ) {
-      await message.delete()
+      message.delete()
 
       const getThread = () => {
         return new Promise((resolve) => {
