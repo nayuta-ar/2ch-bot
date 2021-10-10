@@ -11,7 +11,7 @@ module.exports = {
         .setDescription('新しく設定するニックネームを指定できます。'),
     ),
   async execute(interaction) {
-    const newNick = interaction.options.getString('new-nick') || '名無しさん'
+    const newNick = interaction.options.getString('new-name') || '名無しさん'
 
     if (newNick.length > 50) {
       return interaction.error('50文字まで入力できます。')
