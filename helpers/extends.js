@@ -14,7 +14,7 @@ Interaction.prototype.success = function (key, options = {}) {
   return this.sendE(key, options)
 }
 
-Interaction.prototype.success = function (key, options = {}) {
+Interaction.prototype.info = function (key, options = {}) {
   options.emoji = 'information_source'
   options.msg = 'Info'
   options.color = 'BLURPLE'
