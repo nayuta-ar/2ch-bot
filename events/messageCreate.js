@@ -91,7 +91,7 @@ module.exports = {
       await createTh.setRateLimitPerUser(3)
 
       const addMsg = await createTh.send('Loading...')
-      await addMsg.edit(`${message.author}<@&875986483260043284>`)
+      await addMsg.edit(`${message.author}<@&902923326698188830>`)
       await addMsg.delete()
     }
 
